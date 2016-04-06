@@ -15,7 +15,7 @@ package Nanosleep is
    --  This is to avoid busy-waiting for ridiculously long periods;
    --  even a millisecond seems rather long!
 
-   function To_Interval (Period : Duration) return Interval;
+   function To_Interval (Period : Sleepable) return Interval;
 
    --  Loop for the given number of processor cycles.
    procedure Sleep (Period : Interval) with Inline_Always;

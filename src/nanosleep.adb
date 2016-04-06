@@ -9,8 +9,8 @@ package body Nanosleep is
    Clock_Frequency : constant := 168_000_000;
    --  STM32F42xxx without over-drive.
 
-   function To_Interval (Period : Duration) return Interval
-     is (Interval (Period * 10e9 / Clock_Frequency));
+   function To_Interval (Period : Sleepable) return Interval
+     is (Interval (Period * Clock_Frequency));
 
    DEMCR : Interfaces.Unsigned_32
      with
