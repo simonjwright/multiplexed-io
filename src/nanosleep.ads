@@ -1,6 +1,6 @@
 --  Demonstration code for the AdaPilot project
 --  (http://adapilot.likeabird.eu).
---  Copyright (C) Simon Wright <simon@pushface.org> 2016
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 --  This package implements a busy-wait loop for periods as required
 --  up to 1 ms.
