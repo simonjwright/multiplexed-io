@@ -35,7 +35,12 @@ begin
       use STM32F4.GPIO;
       use SN74HC165;
    begin
-      --  Configure the input
+      --  Configure the input; on the RHS of the STM32F429I-DISCO,
+      --  free pins per DocID025175 Rev 1 (STM32F429I-DISCO User
+      --  Manual) Table 6 are:
+      --
+      --  PA9 PA10 PB4 PB7 PC8 PC11 PC12 PC13 PD2 PD4 PD5 PD7 PE2 PE3
+      --  PE4 PE5 PE6
       The_Input.Initialize
         ((SER_OUT => (GPIO_C'Access, Pin_8),
           SH_LD   => (GPIO_C'Access, Pin_12),

@@ -2,9 +2,9 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-project Shift_In is
+project Shift_Out is
 
-   for Main use ("shift_in.adb");
+   for Main use ("shift_out.adb");
    for Exec_Dir use ".";
    for Target use "arm-eabi";
    for Runtime ("ada") use "ravenscar-sfp-stm32f4";
@@ -19,7 +19,7 @@ project Shift_In is
       Bareboard & "drivers",
       Bareboard & "devices"
      );
-   for Object_Dir use ".build-shift_in";
+   for Object_Dir use ".build-shift_out";
 
    package Builder is
       for Default_Switches ("ada") use
@@ -42,4 +42,4 @@ project Shift_In is
       for Map_File_Option use "-Wl,-Map," & Project'Project_Dir;
    end Linker;
 
-end Shift_In;
+end Shift_Out;
