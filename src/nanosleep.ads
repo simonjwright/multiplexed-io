@@ -7,7 +7,7 @@
 
 with Interfaces;
 
-package Nanosleep is
+package Nanosleep with SPARK_Mode is
 
    type Interval is private;
 

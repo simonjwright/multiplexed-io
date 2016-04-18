@@ -35,7 +35,7 @@ begin
       use STM32F4.GPIO;
       use SN74HC165;
    begin
-      --  Configure the input; on the RHS of the STM32F429I-DISCO,
+      --  Configure the input; on the LHS of the STM32F429I-DISCO,
       --  free pins per DocID025175 Rev 1 (STM32F429I-DISCO User
       --  Manual) Table 6 are:
       --

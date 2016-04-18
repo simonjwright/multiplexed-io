@@ -4,7 +4,7 @@
 
 with System;
 
-package body Nanosleep is
+package body Nanosleep with SPARK_Mode is
 
    Clock_Frequency : constant := 168_000_000;
    --  STM32F42xxx without over-drive.
@@ -35,13 +35,17 @@ package body Nanosleep is
 
    procedure Sleep (Period : Interval) is
       Start : constant Interval := DWT_CYCCNT;
+      Current : Interval;
    begin
       loop
-         exit when DWT_CYCCNT - Start > Period;
+         Current := DWT_CYCCNT;
+         exit when Current - Start > Period;
       end loop;
    end Sleep;
 
 begin
+   pragma SPARK_Mode (Off);
+
    declare
       --  Bits in DEMCR
       TRCENA : constant := 24;
