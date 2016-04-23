@@ -1,0 +1,9 @@
+.build*
+
+shift_in
+shift_out
+io_expander
+
+*~
+*.map
+*.bin
