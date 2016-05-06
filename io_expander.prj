@@ -1,0 +1,5 @@
+ada-mode project file for io_expander.
+
+gpr_file=io_expander.gpr
+target=arm-eabi-
+runtime=ravenscar-sfp-stm32f4

@@ -1,0 +1,27 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+abstract project Environment is
+
+   for Target use "arm-eabi";
+   for Runtime ("ada") use "ravenscar-sfp-stm32f4";
+
+   package Builder is
+      for Default_Switches ("ada") use
+        (
+         "-g",
+         "-O0",
+         "--create-map-file"
+        );
+   end Builder;
+
+   package Compiler is
+      for Default_Switches ("ada") use
+        (
+         "-gnatqQafoy",
+         "-gnatwaL.X"
+        );
+   end Compiler;
+
+end Environment;
