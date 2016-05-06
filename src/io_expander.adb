@@ -3,14 +3,14 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with Ada.Real_Time; use Ada.Real_Time;
-with PCF8574A;
+with PCF8574A_Demo;
 with STM32F40x;
 
-procedure IO_Expander is
+procedure IO_Expander with SPARK_Mode is
    Value : STM32F40x.Byte;
    use type STM32F40x.Byte;
 begin
-   PCF8574A.Initialize;
+   PCF8574A_Demo.Initialize;
 
    loop
       --  bits 0 .. 3 are LEDs, 4 .. 7 are pushbuttons.
@@ -20,8 +20,8 @@ begin
       --  The pull-up required for switches is provided by writing 1.
       --  ***********************************************************
 
-      Value := PCF8574A.Read;
-      PCF8574A.Write ((Value / (2 ** 4)) or 16#f0#);
+      Value := PCF8574A_Demo.Read;
+      PCF8574A_Demo.Write ((Value / (2 ** 4)) or 16#f0#);
 
       delay until Ada.Real_Time.Clock + Ada.Real_Time.Milliseconds (500);
    end loop;
