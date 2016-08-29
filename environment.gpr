@@ -5,20 +5,16 @@
 abstract project Environment is
 
    for Target use "arm-eabi";
-   for Runtime ("ada") use "ravenscar-sfp-stm32f4";
 
-   package Builder is
-      for Default_Switches ("ada") use
-        (
-         "-g",
-         "-O0",
-         "--create-map-file"
-        );
-   end Builder;
+   type RTS_Type is ("adaracer", "stm32f4");
+   RTS : RTS_Type := external ("RTS", "adaracer");
+   for Runtime ("ada") use "ravenscar-sfp-" & RTS;
 
    package Compiler is
       for Default_Switches ("ada") use
         (
+         "-g",
+         "-O0",
          "-gnatqQafoy",
          "-gnatwaL.X"
         );
