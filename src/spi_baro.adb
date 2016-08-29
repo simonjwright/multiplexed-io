@@ -222,20 +222,6 @@ begin
    SPI.SPI2_Periph.CR1.SPE := 1;
 
    declare -- check BARO status
-      function Twiddle (B : Byte) return Byte;
-      function Twiddle (B : Byte) return Byte is
-         type Bits is array (0 .. 7) of Bit
-         with Component_Size => 1, Size => 8;
-         function To_Bits is new Ada.Unchecked_Conversion (Byte, Bits);
-         function To_Byte is new Ada.Unchecked_Conversion (Bits, Byte);
-         Input : constant Bits := To_Bits (B);
-         Output : Bits;
-      begin
-         for J in 0 .. 7 loop
-            Output (7 - J) := Input (J);
-         end loop;
-         return To_Byte (Output);
-      end Twiddle;
       Raw : Byte_Array (0 .. 1);
       use type Byte;
    begin

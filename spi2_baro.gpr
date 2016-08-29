@@ -1,0 +1,20 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+aggregate project SPI2_BARO extends "environment.gpr" is
+
+   case RTS is
+      when "adaracer" =>
+         for Project_Path use ("stm32f429x");
+      when "stm32f4" =>
+         for Project_Path use ("stm32f40x");
+   end case;
+
+   for Project_Files use ("spi2_baro_build.gpr");
+
+   package Builder is
+      for Switches (others) use ("--create-map-file");
+   end Builder;
+
+end SPI2_BARO;
