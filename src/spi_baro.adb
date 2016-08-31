@@ -178,7 +178,19 @@ begin
    GPIO.GPIOD_Periph.PUPDR.Arr (7)     := 2#00#; -- no pullup/down
    GPIO.GPIOD_Periph.BSRR.BS.Arr (7)   := 1;     -- set bit
 
-   --  Enable GPIOB
+   --  Enable 3.3V Power Sensors (VDD_SENS_EN on PE3)
+
+   --  enable GPIOE
+   RCC.RCC_Periph.AHB1ENR.GPIOEEN := 1;
+
+   --  PE3, VDD_SENS_EN
+   GPIO.GPIOE_Periph.MODER.Arr (3)     := 2#01#; -- general-purpose output
+   GPIO.GPIOE_Periph.OTYPER.OT.Arr (3) := 0;     -- push-pull
+   GPIO.GPIOE_Periph.OSPEEDR.Arr (3)   := 2#10#; -- high speed
+   GPIO.GPIOE_Periph.PUPDR.Arr (3)     := 2#00#; -- no pullup/down
+   GPIO.GPIOE_Periph.BSRR.BS.Arr (3)   := 1;     -- set bit
+
+   --  Enable GPIOB for FRAM SPI pins
    RCC.RCC_Periph.AHB1ENR.GPIOBEN := 1;
 
    --  PB10, SCLK
@@ -208,7 +220,7 @@ begin
    --  Configure SPI
    SPI.SPI2_Periph.CR1 := (             -- XXX fill in the others!
                            MSTR   => 1,
-                           BR     => 1, -- fPCLK / 4
+                           BR     => 3, -- fPCLK / 16
                            SSI    => 1, -- software NSS
                            SSM    => 1, -- software NSS
                            CPOL   => 0, -- mode 0
