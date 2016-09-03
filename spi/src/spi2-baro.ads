@@ -4,7 +4,7 @@
 
 package SPI2.BARO
 with
-  SPARK_Mode,
+  SPARK_Mode => On,
   Elaborate_Body
 is
 end SPI2.BARO;

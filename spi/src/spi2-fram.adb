@@ -7,7 +7,9 @@ with Interfaces;
 
 with SPI2.Internal;
 
-package body SPI2.FRAM is
+package body SPI2.FRAM
+with SPARK_Mode => On
+is
 
    type FRAM_Opcode is
      (

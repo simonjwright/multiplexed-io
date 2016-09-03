@@ -2,6 +2,8 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+--  Provides target selection via scenario switch RTS.
+
 abstract project Environment is
 
    for Target use "arm-eabi";

@@ -8,31 +8,9 @@ with STM32_SVD.SPI;
 
 package body SPI2.Internal
 with
-  SPARK_Mode => On
+  SPARK_Mode => Off,  -- or loops in "generation of Global contracts"
+  Refined_State => (State => (Implementation))
 is
-
-   --  We use a protected type here because we have to protect the bus
-   --  from concurrent access by FRAM and BARO.
-   --
-   --  Under Ravenscar restrictions, it doesn't appear possible to
-   --  implement a standard Lock scheme since the maximum entry queue
-   --  length is 1 (for SPI2, there might not be a problem, since
-   --  there are only two devices; but ... we don't know how many
-   --  tasks might want to access the FRAM).
-   --
-   --  In any case, the lockout won't be very long (some timing data
-   --  needed here!).
-   protected Implementation is
-
-      procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array);
-
-      procedure Write_SPI (The_Device : Device; Bytes : Byte_Array);
-
-      procedure Command_SPI (The_Device :     Device;
-                             Command    :     Byte_Array;
-                             Result     : out Byte_Array);
-
-   end Implementation;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    is
@@ -63,13 +41,14 @@ is
    --  /BARO CS - PD7
    --  /FRAM CS - PD10
    --
-   --  From RM0090 Issue 11 Fig 27, SPI2 uses GPIO AF6.
+   --  From RM0090 Issue 11 Fig 27, SPI2 uses GPIO AF5 or AF6.
+   --  This is WRONG, see DocID024030 Rev 8 Table 12; it's AF5.
    --  From RM0090 Issue 11 Table 1, SPI2 is on APB1 (42 MHz with our
    --  settings).
    --
    --  From DA5611-01BA03_011 page 4, the maximum SCLK is 20 MHz.
    --  This means we will need to run the SPI with a divisor of 4
-   --  (=> c10.5 MHz).
+   --  (=> 10.5 MHz).
 
    use STM32_SVD;
 
@@ -156,26 +135,28 @@ is
    end Implementation;
 
    procedure Select_Device (The_Device : Device)
-   with SPARK_Mode => Off
    is
    begin
       case The_Device is
          when BARO =>
-            GPIO.GPIOD_Periph.BSRR.BR.Arr (7)   := 1;     -- reset /BARO CS
+            --  Reset /BARO CS
+            GPIO.GPIOD_Periph.BSRR.BR.Arr := (7 => 1, others => 0);
          when FRAM =>
-            GPIO.GPIOD_Periph.BSRR.BR.Arr (10)   := 1;    -- reset /FRAM CS
+            --  Reset /FRAM CS
+            GPIO.GPIOD_Periph.BSRR.BR.Arr := (10 => 1, others => 0);
       end case;
    end Select_Device;
 
    procedure Deselect_Device (The_Device : Device)
-   with SPARK_Mode => Off
    is
    begin
       case The_Device is
          when BARO =>
-            GPIO.GPIOD_Periph.BSRR.BS.Arr (7)   := 1;     -- set /BARO CS
+            --  Set /BARO CS
+            GPIO.GPIOD_Periph.BSRR.BS.Arr := (7 => 1, others => 0);
          when FRAM =>
-            GPIO.GPIOD_Periph.BSRR.BS.Arr (10)   := 1;    -- set /FRAM CS
+            --  Set /FRAM CS
+            GPIO.GPIOD_Periph.BSRR.BS.Arr := (10 => 1, others => 0);
       end case;
    end Deselect_Device;
 

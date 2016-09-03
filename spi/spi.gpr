@@ -2,18 +2,15 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with "stm32_svd.gpr";
+aggregate project SPI extends "../environment.gpr" is
 
-library project SPI extends "../environment.gpr" is
+   case RTS is
+      when "adaracer" =>
+         for Project_Path use ("../stm32f429x");
+      when "stm32f4" =>
+         for Project_Path use ("../stm32f40x");
+   end case;
 
-   for Languages use ("ada");
-
-   for Library_Name use "spi";
-   for Library_Kind use "static";
-   for Library_Dir use "lib";
-
-   for Source_Dirs use ("src");
-
-   for Object_Dir use ".build";
+   for Project_Files use ("spi_build.gpr");
 
 end SPI;
