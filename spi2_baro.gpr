@@ -2,6 +2,13 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+---------------------------------------------------------------------
+--  This is the main project file for building the spi2_baro
+--  demonstrator (the executable will be spi2_baro-adaracer or
+--  spi2_baro-stm32f4 depending on the scenario variable RTS, default
+--  adaracer).
+---------------------------------------------------------------------
+
 aggregate project SPI2_BARO extends "environment.gpr" is
 
    case RTS is

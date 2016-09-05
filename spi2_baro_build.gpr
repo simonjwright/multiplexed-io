@@ -2,7 +2,16 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with "spi/spi.gpr";
+--------------------------------------------------------------------
+--  This is the project file for building the spi2_baro demonstrator
+--  (the executable will be spi2_baro-adaracer or spi2_baro-stm32f4
+--  depending on the scenario variable RTS, default adaracer).
+--
+--  DO NOT CALL DIRECTLY: it is to be called up via the main project
+--  file spi2_baro.gpr.
+--------------------------------------------------------------------
+
+with "spi/spi_build.gpr";
 
 project SPI2_BARO_Build extends "environment.gpr" is
 
