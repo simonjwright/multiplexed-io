@@ -3,7 +3,7 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with "../i2c/i2c_gnatprove.gpr";
-with "../stm32f429x/stm32_svd.gpr";
+with "../../stm32f429x/stm32_svd.gpr";
 
 project I2C1_Gnatprove is
 
@@ -11,11 +11,7 @@ project I2C1_Gnatprove is
    for Object_Dir use ".build-prove";
 
    package Builder is
-      for Global_Configuration_Pragmas use "../gnat.adc";
+      for Global_Configuration_Pragmas use "../../gnat.adc";
    end Builder;
-
-   -- package Naming is
-   --    for Body ("I2C.System_Clock") use "i2c-system_clock.proving.adb";
-   -- end Naming;
 
 end I2C1_Gnatprove;

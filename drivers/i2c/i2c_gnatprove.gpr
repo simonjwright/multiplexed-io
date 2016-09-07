@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with "../stm32f429x/stm32_svd.gpr";
+with "../../stm32f429x/stm32_svd.gpr";
 
 project I2C_Gnatprove is
 
@@ -10,7 +10,7 @@ project I2C_Gnatprove is
    for Object_Dir use ".build-prove";
 
    package Builder is
-      for Global_Configuration_Pragmas use "../gnat.adc";
+      for Global_Configuration_Pragmas use "../../gnat.adc";
    end Builder;
 
    package Naming is

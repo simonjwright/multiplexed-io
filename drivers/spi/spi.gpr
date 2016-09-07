@@ -4,7 +4,7 @@
 
 with "stm32_svd.gpr";
 
-library project SPI extends "../environment.gpr" is
+library project SPI extends "../../environment.gpr" is
 
    for Languages use ("ada");
 

@@ -8,7 +8,7 @@ with System;
 
 with SPI2.FRAM;
 
-procedure SPI_User with Priority => System.Priority'First is
+procedure SPI2_FRAM with Priority => System.Priority'First is
    package Integer_FRAM is new SPI2.FRAM.IO (Integer);
    Result : Integer;
    use type Ada.Real_Time.Time;
@@ -22,4 +22,4 @@ begin
          delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
       end loop;
    end loop;
-end SPI_User;
+end SPI2_FRAM;

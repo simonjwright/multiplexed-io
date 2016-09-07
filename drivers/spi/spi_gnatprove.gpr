@@ -1,4 +1,4 @@
-with "../stm32f429x/stm32_svd.gpr";
+with "../../stm32f429x/stm32_svd.gpr";
 
 project SPI_Gnatprove is
 
@@ -6,7 +6,7 @@ project SPI_Gnatprove is
    for Object_Dir use ".build-prove";
 
    package Builder is
-      for Global_Configuration_Pragmas use "../gnat.adc";
+      for Global_Configuration_Pragmas use "../../gnat.adc";
    end Builder;
 
 end SPI_Gnatprove;

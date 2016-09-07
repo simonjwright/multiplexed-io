@@ -4,7 +4,7 @@
 
 with "stm32_svd.gpr";
 
-library project I2C extends "../environment.gpr" is
+library project I2C extends "../../environment.gpr" is
 
    for Languages use ("ada");
 
