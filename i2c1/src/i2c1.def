@@ -1,0 +1,19 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+--  Used in ../Makefile by gnatprep to convert the parameterised
+--  i2c.ad[bs].pp into Ada source for i2c1.ad[bs].
+
+I2C        := I2C1
+
+SCL_Enable := GPIOBEN
+SCL_GPIO   := GPIO.GPIOB_Periph
+SCL_Pin    := 8
+
+SDA_Enable := GPIOBEN
+SDA_GPIO   := GPIO.GPIOB_Periph
+SDA_Pin    := 9
+
+I2C_Enable := I2C1EN
+I2C_Periph := I2C.I2C1_Periph

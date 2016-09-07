@@ -2,13 +2,14 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+with "../i2c/i2c.gpr";
 with "stm32_svd.gpr";
 
-library project SPI extends "../environment.gpr" is
+library project I2C1 extends "../environment.gpr" is
 
    for Languages use ("ada");
 
-   for Library_Name use "spi";
+   for Library_Name use "i2c1";
    for Library_Kind use "static";
    for Library_Dir use "lib-" & RTS;
 
@@ -16,4 +17,4 @@ library project SPI extends "../environment.gpr" is
 
    for Object_Dir use ".build-" & RTS;
 
-end SPI;
+end I2C1;

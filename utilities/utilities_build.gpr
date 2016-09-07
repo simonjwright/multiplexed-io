@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-aggregate project SPI_Build extends "../environment.gpr" is
+aggregate project Utilities_Build extends "../environment.gpr" is
 
    case RTS is
       when "adaracer" =>
@@ -11,6 +11,6 @@ aggregate project SPI_Build extends "../environment.gpr" is
          for Project_Path use ("../stm32f40x");
    end case;
 
-   for Project_Files use ("spi.gpr");
+   for Project_Files use ("utilities.gpr");
 
-end SPI_Build;
+end Utilities_Build;

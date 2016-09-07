@@ -2,13 +2,11 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with "stm32_svd.gpr";
-
-library project SPI extends "../environment.gpr" is
+library project Utilities extends "../environment.gpr" is
 
    for Languages use ("ada");
 
-   for Library_Name use "spi";
+   for Library_Name use "utilities";
    for Library_Kind use "static";
    for Library_Dir use "lib-" & RTS;
 
@@ -16,4 +14,4 @@ library project SPI extends "../environment.gpr" is
 
    for Object_Dir use ".build-" & RTS;
 
-end SPI;
+end Utilities;

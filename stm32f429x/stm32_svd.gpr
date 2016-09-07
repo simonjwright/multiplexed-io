@@ -8,10 +8,10 @@ library project STM32_SVD extends "../environment.gpr" is
 
    for Library_Name use "stm32f429x";
    for Library_Kind use "static";
-   for Library_Dir use "lib";
+   for Library_Dir use "lib-" & RTS;
 
    for Source_Dirs use ("src");
 
-   for Object_Dir use ".build";
+   for Object_Dir use ".build-" & RTS;
 
 end STM32_SVD;
