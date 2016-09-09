@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with Interfaces;
+with SPI;
 
 --  private --  (can't say this with Abstract_State)
 package SPI2.Internal
@@ -15,7 +15,7 @@ is
 
    type Device is (BARO, FRAM);
 
-   type Byte_Array is array (Natural range <>) of Interfaces.Unsigned_8;
+   subtype Byte_Array is SPI.Byte_Array;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with Depends => (State => State,

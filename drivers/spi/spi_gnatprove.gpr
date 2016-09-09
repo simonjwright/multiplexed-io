@@ -1,4 +1,5 @@
 with "../../stm32f429x/stm32_svd.gpr";
+with "../../utilities/utilities_gnatprove.gpr";
 
 project SPI_Gnatprove is
 

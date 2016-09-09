@@ -1,0 +1,25 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+--  Used in ../Makefile by gnatprep to convert the parameterised
+--  spi-device.ad[bs].pp into Ada source for spi2-device.ad[bs].
+
+SPI        := SPI2
+
+SCLK_Enable := GPIOBEN
+SCLK_GPIO   := GPIO.GPIOB_Periph
+SCLK_Pin    := 10
+
+MISO_Enable := GPIOBEN
+MISO_GPIO   := GPIO.GPIOB_Periph
+MISO_Pin    := 14
+
+MOSI_Enable := GPIOBEN
+MOSI_GPIO   := GPIO.GPIOB_Periph
+MOSI_Pin    := 15
+
+SPI_Enable_Register := APB1ENR
+SPI_Enable          := SPI2EN
+SPI_Periph          := SPI.SPI2_Periph
+SPI_BUS_CLOCK       := PCLK1

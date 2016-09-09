@@ -6,7 +6,7 @@
 --  ../../i2c/src/i2c.adb.pp.  TO MAKE A PERMANENT CHANGE, EDIT THAT
 --  FILE AND REGENERATE, THEN COMMIT THE REGENERATED FILE.
 
-with I2C_System_Clock;
+with System_Clocks;
 
 with STM32_SVD.GPIO;
 with STM32_SVD.I2C;
@@ -130,18 +130,18 @@ is
       RCC.RCC_Periph.APB1ENR := ($I2C_Enable => 1, others => <>);
 
       declare
-         I2C_Clock_Speed : constant := 100_000;
+         I2C_Clock_Speed : constant := 100_000; -- XXX whence this?
 
          --  APB1 clock
-         PCLK1 : constant I2C_System_Clock.Frequency
-           := I2C_System_Clock.PCLK1;
-         use type I2C_System_Clock.Frequency;
+         PCLK1 : constant System_Clocks.Frequency
+           := System_Clocks.PCLK1;
+         use type System_Clocks.Frequency;
 
          FREQ : constant UInt6 :=  UInt6 (PCLK1 / 1_000_000);
          CCR : UInt12;
       begin
          $I2C_Periph.CR2    := (FREQ           => FREQ,
-                               others         => <>);
+                                others         => <>);
          $I2C_Periph.CR1    := (others         => <>);
          --  incl. clearing PE
          CCR               := UInt12 (PCLK1 / (I2C_Clock_Speed * 2));
@@ -159,7 +159,7 @@ is
                                Reserved_10_14 => 2#10000#, -- see RM
                                others         => <>);
          pragma Assert ($I2C_Periph.CR1.PE = 1,
-                          "I2C3 peripheral not enabled");
+                          "$I2C peripheral not enabled");
       end;
 
       Initialize_Done := True;

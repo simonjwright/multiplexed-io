@@ -1,7 +1,8 @@
 .build*
 
-*/lib
-*/include
+gpr_query*
+lib*
+include*
 
 shift_in
 shift_out

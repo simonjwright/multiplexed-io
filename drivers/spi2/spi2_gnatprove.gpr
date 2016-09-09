@@ -2,17 +2,17 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-project Utilities_Gnatprove is
+with "../spi/spi_gnatprove.gpr";
+with "../../stm32f429x/stm32_svd.gpr";
+with "../../utilities/utilities_gnatprove.gpr";
+
+project SPI2_Gnatprove is
 
    for Source_Dirs use ("src");
    for Object_Dir use ".build-prove";
 
    package Builder is
-      for Global_Configuration_Pragmas use "../gnat.adc";
+      for Global_Configuration_Pragmas use "../../gnat.adc";
    end Builder;
 
-   package Naming is
-      for Body ("system_clocks") use "system_clocks.proving.adb";
-   end Naming;
-
-end Utilities_Gnatprove;
+end SPI2_Gnatprove;
