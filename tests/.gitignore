@@ -1,0 +1,4 @@
+# ignore executables
+
+*-adaracer
+*-stm32f4
