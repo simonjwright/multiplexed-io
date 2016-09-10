@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with "../drivers/spi/spi.gpr";
+with "../drivers/spi2/spi2.gpr";
 
 project SPI2_FRAM extends "../environment.gpr" is
 

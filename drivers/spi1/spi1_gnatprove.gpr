@@ -1,0 +1,18 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+with "../spi/spi_gnatprove.gpr";
+with "../../stm32f429x/stm32_svd.gpr";
+with "../../utilities/utilities_gnatprove.gpr";
+
+project SPI1_Gnatprove is
+
+   for Source_Dirs use ("src");
+   for Object_Dir use ".build-prove";
+
+   package Builder is
+      for Global_Configuration_Pragmas use "../../gnat.adc";
+   end Builder;
+
+end SPI1_Gnatprove;

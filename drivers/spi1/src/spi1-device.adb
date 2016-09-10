@@ -1,3 +1,4 @@
+pragma Source_Reference (1, "../spi/src/spi-device.adb.pp");
 --  Demonstration code for the AdaPilot project
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
@@ -13,7 +14,7 @@ with STM32_SVD.SPI;
 
 with System_Clocks;
 
-package body $SPI.Device
+package body SPI1.Device
 with
   SPARK_Mode => On,
   Refined_State => (State => (Initialize_Done))
@@ -46,48 +47,48 @@ is
       GPIO.GPIOE_Periph.BSRR.BS.Arr (3)   := 1;     -- set bit
 
       --  Set up GPIO for SCLK pin
-      RCC.RCC_Periph.AHB1ENR.$SCLK_Enable  := 1;
-      $SCLK_GPIO.MODER.Arr ($SCLK_Pin)     := 2#10#; -- AF
-      $SCLK_GPIO.OTYPER.OT.Arr ($SCLK_Pin) := 0;     -- push-pull
-      $SCLK_GPIO.OSPEEDR.Arr ($SCLK_Pin)   := 2#10#; -- high speed
-      $SCLK_GPIO.PUPDR.Arr ($SCLK_Pin)     := 2#00#; -- no pullup/down
-      #if SCLK_Pin < 8 then
-      $SCLK_GPIO.AFRL.Arr ($SCLK_Pin)      := 5;     -- AF5
-      #else
-      $SCLK_GPIO.AFRH.Arr ($SCLK_Pin)      := 5;     -- AF5
-      #end if;
+      RCC.RCC_Periph.AHB1ENR.GPIOAEN  := 1;
+      GPIO.GPIOA_Periph.MODER.Arr (5)     := 2#10#; -- AF
+      GPIO.GPIOA_Periph.OTYPER.OT.Arr (5) := 0;     -- push-pull
+      GPIO.GPIOA_Periph.OSPEEDR.Arr (5)   := 2#10#; -- high speed
+      GPIO.GPIOA_Periph.PUPDR.Arr (5)     := 2#00#; -- no pullup/down
+--!       #if SCLK_Pin < 8 then
+      GPIO.GPIOA_Periph.AFRL.Arr (5)      := 5;     -- AF5
+--!       #else
+--!       $SCLK_GPIO.AFRH.Arr ($SCLK_Pin)      := 5;     -- AF5
+--!       #end if;
 
       --  Set up GPIO for MISO pin
-      RCC.RCC_Periph.AHB1ENR.$MISO_Enable  := 1;
-      $MISO_GPIO.MODER.Arr ($MISO_Pin)     := 2#10#; -- AF
-      $MISO_GPIO.OTYPER.OT.Arr ($MISO_Pin) := 1;     -- open-drain
-      $MISO_GPIO.OSPEEDR.Arr ($MISO_Pin)   := 2#10#; -- high speed
-      $MISO_GPIO.PUPDR.Arr ($MISO_Pin)     := 2#00#; -- no pullup/down
-      #if MISO_Pin < 8 then
-      $MISO_GPIO.AFRL.Arr ($MISO_Pin)      := 5;     -- AF5
-      #else
-      $MISO_GPIO.AFRH.Arr ($MISO_Pin)      := 5;     -- AF5
-      #end if;
+      RCC.RCC_Periph.AHB1ENR.GPIOAEN  := 1;
+      GPIO.GPIOA_Periph.MODER.Arr (6)     := 2#10#; -- AF
+      GPIO.GPIOA_Periph.OTYPER.OT.Arr (6) := 1;     -- open-drain
+      GPIO.GPIOA_Periph.OSPEEDR.Arr (6)   := 2#10#; -- high speed
+      GPIO.GPIOA_Periph.PUPDR.Arr (6)     := 2#00#; -- no pullup/down
+--!       #if MISO_Pin < 8 then
+      GPIO.GPIOA_Periph.AFRL.Arr (6)      := 5;     -- AF5
+--!       #else
+--!       $MISO_GPIO.AFRH.Arr ($MISO_Pin)      := 5;     -- AF5
+--!       #end if;
 
       --  Set up GPIO for MOSI pin
-      RCC.RCC_Periph.AHB1ENR.$MOSI_Enable  := 1;
-      $MOSI_GPIO.MODER.Arr ($MOSI_Pin)     := 2#10#; -- AF
-      $MOSI_GPIO.OTYPER.OT.Arr ($MOSI_Pin) := 0;     -- push-pull
-      $MOSI_GPIO.OSPEEDR.Arr ($MOSI_Pin)   := 2#10#; -- high speed
-      $MOSI_GPIO.PUPDR.Arr ($MOSI_Pin)     := 2#00#; -- no pullup/down
-      #if MOSI_Pin < 8 then
-      $MOSI_GPIO.AFRL.Arr ($MOSI_Pin)      := 5;     -- AF5
-      #else
-      $MOSI_GPIO.AFRH.Arr ($MOSI_Pin)      := 5;     -- AF5
-      #end if;
+      RCC.RCC_Periph.AHB1ENR.GPIOAEN  := 1;
+      GPIO.GPIOA_Periph.MODER.Arr (7)     := 2#10#; -- AF
+      GPIO.GPIOA_Periph.OTYPER.OT.Arr (7) := 0;     -- push-pull
+      GPIO.GPIOA_Periph.OSPEEDR.Arr (7)   := 2#10#; -- high speed
+      GPIO.GPIOA_Periph.PUPDR.Arr (7)     := 2#00#; -- no pullup/down
+--!       #if MOSI_Pin < 8 then
+      GPIO.GPIOA_Periph.AFRL.Arr (7)      := 5;     -- AF5
+--!       #else
+--!       $MOSI_GPIO.AFRH.Arr ($MOSI_Pin)      := 5;     -- AF5
+--!       #end if;
 
       --  Enable $SPI
-      RCC.RCC_Periph.$SPI_Enable_Register.$SPI_Enable := 1;
+      RCC.RCC_Periph.APB2ENR.SPI1EN := 1;
 
       --  Configure SPI
       declare
          Bus_Clock : constant Natural
-           := Natural (System_Clocks.$SPI_BUS_CLOCK);
+           := Natural (System_Clocks.PCLK2);
          SPI_Clock : Natural := Bus_Clock / 2;
          BR_Setting : UInt3 := 0;
       begin
@@ -100,7 +101,7 @@ is
             SPI_Clock := SPI_Clock / 2;
          end loop;
 
-         STM32_SVD.$SPI_Periph.CR1 :=
+         STM32_SVD.SPI.SPI1_Periph.CR1 :=
            (             -- XXX fill in the others!
             MSTR   => 1,
             BR     => BR_Setting,
@@ -112,10 +113,10 @@ is
       end;
 
       --  Deconfigure I2S
-      STM32_SVD.$SPI_Periph.I2SCFGR.I2SMOD := 0;
+      STM32_SVD.SPI.SPI1_Periph.I2SCFGR.I2SMOD := 0;
 
       --  Enable SPI
-      STM32_SVD.$SPI_Periph.CR1.SPE := 1;
+      STM32_SVD.SPI.SPI1_Periph.CR1.SPE := 1;
 
       Initialize_Done := True;
    end Initialize;
@@ -130,11 +131,11 @@ is
          --  We are in full duplex, so we have to write _something_ to
          --  start the cycle; see "Handling data transmission and
          --  reception", RM0090 rev 11 p 878
-         STM32_SVD.$SPI_Periph.DR.DR := 0;
-         while STM32_SVD.$SPI_Periph.SR.RXNE = 0 loop
+         STM32_SVD.SPI.SPI1_Periph.DR.DR := 0;
+         while STM32_SVD.SPI.SPI1_Periph.SR.RXNE = 0 loop
             null;
          end loop;
-         Value_Read := STM32_SVD.$SPI_Periph.DR.DR;
+         Value_Read := STM32_SVD.SPI.SPI1_Periph.DR.DR;
          pragma Assert (Value_Read <= Short (Interfaces.Unsigned_8'Last));
          Bytes (J) := Interfaces.Unsigned_8 (Value_Read);
       end loop;
@@ -145,11 +146,11 @@ is
    is
    begin
       for B of Bytes loop
-         STM32_SVD.$SPI_Periph.DR.DR := Short (B);
-         while STM32_SVD.$SPI_Periph.SR.TXE /= 0 loop
+         STM32_SVD.SPI.SPI1_Periph.DR.DR := Short (B);
+         while STM32_SVD.SPI.SPI1_Periph.SR.TXE /= 0 loop
             null;
          end loop;
-         while STM32_SVD.$SPI_Periph.SR.BSY /= 0 loop
+         while STM32_SVD.SPI.SPI1_Periph.SR.BSY /= 0 loop
             null;
          end loop;
       end loop;
@@ -163,11 +164,11 @@ is
       use type Short;
    begin
       for C of Command loop
-         STM32_SVD.$SPI_Periph.DR.DR := Short (C);
-         while STM32_SVD.$SPI_Periph.SR.TXE /= 0 loop
+         STM32_SVD.SPI.SPI1_Periph.DR.DR := Short (C);
+         while STM32_SVD.SPI.SPI1_Periph.SR.TXE /= 0 loop
             null;
          end loop;
-         while STM32_SVD.$SPI_Periph.SR.BSY /= 0 loop
+         while STM32_SVD.SPI.SPI1_Periph.SR.BSY /= 0 loop
             null;
          end loop;
       end loop;
@@ -175,17 +176,17 @@ is
          --  We are in full duplex, so we have to write _something_ to
          --  start the cycle; see "Handling data transmission and
          --  reception", RM0090 rev 11 p 878
-         STM32_SVD.$SPI_Periph.DR.DR := 0;
-         while STM32_SVD.$SPI_Periph.SR.RXNE = 0 loop
+         STM32_SVD.SPI.SPI1_Periph.DR.DR := 0;
+         while STM32_SVD.SPI.SPI1_Periph.SR.RXNE = 0 loop
             null;
          end loop;
-         Value_Read := STM32_SVD.$SPI_Periph.DR.DR;
+         Value_Read := STM32_SVD.SPI.SPI1_Periph.DR.DR;
          pragma Assert (Value_Read <= Short (Interfaces.Unsigned_8'Last));
          Result (J) := Interfaces.Unsigned_8 (Value_Read);
       end loop;
-      while STM32_SVD.$SPI_Periph.SR.BSY /= 0 loop
+      while STM32_SVD.SPI.SPI1_Periph.SR.BSY /= 0 loop
          null;
       end loop;
    end Command_SPI;
 
-end $SPI.Device;
+end SPI1.Device;

@@ -12,6 +12,7 @@
 --------------------------------------------------------------------
 
 with "../drivers/spi/spi.gpr";
+with "../drivers/spi2/spi2.gpr";
 
 project SPI2_BARO extends "../environment.gpr" is
 
