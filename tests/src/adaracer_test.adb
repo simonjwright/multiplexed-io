@@ -12,7 +12,7 @@ with System;
 
 procedure AdaRacer_Test
 with
-  Priority => System.Priority'First -- or we may block e.g.BARO
+  Priority => System.Priority'First -- or we may block e.g. BARO
 is
    use type Ada.Real_Time.Time;
 begin
