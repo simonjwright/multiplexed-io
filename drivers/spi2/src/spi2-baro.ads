@@ -7,4 +7,10 @@ with
   SPARK_Mode => On,
   Elaborate_Body
 is
+
+   --  Pressure in mB * 100
+   type Pressure is range 10_00 .. 1200_00;
+
+   Measurement : Pressure := 1000_00;
+
 end SPI2.BARO;

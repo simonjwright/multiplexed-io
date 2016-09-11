@@ -16,7 +16,8 @@ with System_Clocks;
 package body $SPI.Device
 with
   SPARK_Mode => On,
-  Refined_State => (State => (Initialize_Done))
+  Refined_State => (State => null,
+                    Initialization => (Initialize_Done))
 is
 
    Initialize_Done : Boolean := False;

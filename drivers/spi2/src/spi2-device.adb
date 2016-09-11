@@ -17,7 +17,8 @@ with System_Clocks;
 package body SPI2.Device
 with
   SPARK_Mode => On,
-  Refined_State => (State => (Initialize_Done))
+  Refined_State => (State => null,
+                    Initialization => (Initialize_Done))
 is
 
    Initialize_Done : Boolean := False;
@@ -52,7 +53,11 @@ is
       GPIO.GPIOB_Periph.OTYPER.OT.Arr (10) := 0;     -- push-pull
       GPIO.GPIOB_Periph.OSPEEDR.Arr (10)   := 2#10#; -- high speed
       GPIO.GPIOB_Periph.PUPDR.Arr (10)     := 2#00#; -- no pullup/down
+--!       #if SCLK_Pin < 8 then
+--!       $SCLK_GPIO.AFRL.Arr ($SCLK_Pin)      := 5;     -- AF5
+--!       #else
       GPIO.GPIOB_Periph.AFRH.Arr (10)      := 5;     -- AF5
+--!       #end if;
 
       --  Set up GPIO for MISO pin
       RCC.RCC_Periph.AHB1ENR.GPIOBEN  := 1;
@@ -60,7 +65,11 @@ is
       GPIO.GPIOB_Periph.OTYPER.OT.Arr (14) := 1;     -- open-drain
       GPIO.GPIOB_Periph.OSPEEDR.Arr (14)   := 2#10#; -- high speed
       GPIO.GPIOB_Periph.PUPDR.Arr (14)     := 2#00#; -- no pullup/down
+--!       #if MISO_Pin < 8 then
+--!       $MISO_GPIO.AFRL.Arr ($MISO_Pin)      := 5;     -- AF5
+--!       #else
       GPIO.GPIOB_Periph.AFRH.Arr (14)      := 5;     -- AF5
+--!       #end if;
 
       --  Set up GPIO for MOSI pin
       RCC.RCC_Periph.AHB1ENR.GPIOBEN  := 1;
@@ -68,7 +77,11 @@ is
       GPIO.GPIOB_Periph.OTYPER.OT.Arr (15) := 0;     -- push-pull
       GPIO.GPIOB_Periph.OSPEEDR.Arr (15)   := 2#10#; -- high speed
       GPIO.GPIOB_Periph.PUPDR.Arr (15)     := 2#00#; -- no pullup/down
+--!       #if MOSI_Pin < 8 then
+--!       $MOSI_GPIO.AFRL.Arr ($MOSI_Pin)      := 5;     -- AF5
+--!       #else
       GPIO.GPIOB_Periph.AFRH.Arr (15)      := 5;     -- AF5
+--!       #end if;
 
       --  Enable $SPI
       RCC.RCC_Periph.APB1ENR.SPI2EN := 1;

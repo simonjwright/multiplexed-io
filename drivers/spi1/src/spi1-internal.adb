@@ -40,10 +40,6 @@ is
    --  PA7 - MOSI
    --
    --  /MPU9250 CS - PC2
-   --
-   --  From DA5611-01BA03_011 page 4, the maximum SCLK is 20 MHz.
-   --  This means we will need to run the SPI with a divisor of 4
-   --  (=> 10.5 MHz).
 
    use STM32_SVD;
 

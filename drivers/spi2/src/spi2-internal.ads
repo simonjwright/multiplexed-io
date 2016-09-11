@@ -18,17 +18,23 @@ is
    subtype Byte_Array is SPI.Byte_Array;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-   with Depends => (State => State,
-                    Bytes => (State, The_Device));
+   with
+     Global => (In_Out => State),
+     Depends => (State => State,
+                 Bytes => (State, The_Device));
 
    procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-   with Depends => (State => (State, The_Device, Bytes));
+   with
+     Global => (In_Out => State),
+     Depends => (State => (State, The_Device, Bytes));
 
    procedure Command_SPI (The_Device :     Device;
                           Command    :     Byte_Array;
                           Result     : out Byte_Array)
-   with Depends => (State => (State, The_Device, Command),
-                    Result => (State, The_Device, Command));
+   with
+     Global => (In_Out => State),
+     Depends => (State => (State, The_Device, Command),
+                 Result => (State, The_Device, Command));
 
 private
 
@@ -48,20 +54,26 @@ private
    is
 
       procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-      with Depends => (Implementation => Implementation,
-                       State => State,
-                       Bytes => (State, The_Device));
+      with
+        Global => (In_Out => State),
+        Depends => (Implementation => Implementation,
+                    State => State,
+                    Bytes => (State, The_Device));
 
       procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-      with Depends => (Implementation => Implementation,
-                       State => (State, The_Device, Bytes));
+      with
+        Global => (In_Out => State),
+        Depends => (Implementation => Implementation,
+                    State => (State, The_Device, Bytes));
 
       procedure Command_SPI (The_Device :     Device;
                              Command    :     Byte_Array;
                              Result     : out Byte_Array)
-      with Depends => (Implementation => Implementation,
-                       State => (State, The_Device, Command),
-                       Result => (State, The_Device, Command));
+      with
+        Global => (In_Out => State),
+        Depends => (Implementation => Implementation,
+                    State => (State, The_Device, Command),
+                    Result => (State, The_Device, Command));
 
    end Implementation;
 

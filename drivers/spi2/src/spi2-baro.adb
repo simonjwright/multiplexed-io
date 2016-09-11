@@ -5,8 +5,6 @@
 with Ada.Real_Time;
 with Interfaces;
 
-with Ada.Text_IO;
-
 with SPI2.Internal;
 pragma Elaborate_All (SPI2.Internal);
 
@@ -82,6 +80,7 @@ is
       D2   : Digital_Temperature;
       DT   : Temperature_Difference;
       TEMP : Actual_Temperature;
+      pragma Unreferenced (TEMP); -- only needed for 2nd-order corrections
 
       subtype Digital_Pressure is Float range 0.0 .. 2.0 ** 24 - 1.0;
       subtype Offset is Float range -8589672450.0 .. 12884705280.0;
@@ -143,8 +142,6 @@ is
                          Actual_Temperature'Last),
               Actual_Temperature'First);
 
-         Ada.Text_IO.Put_Line ("temp: " & Integer'Image (Integer (TEMP)));
-
          --  process pressure
          --  start the conversion
          Internal.Write_SPI (Internal.BARO,
@@ -169,11 +166,10 @@ is
                        Actual_Pressure'Last),
             Actual_Pressure'First);
 
-         Ada.Text_IO.Put_Line ("prss: " & Integer'Image (Integer (P)));
-         Ada.Text_IO.New_Line;
+         Measurement := Pressure (P);
 
          Start_Time := Ada.Real_Time.Clock;
-         delay until Start_Time + Ada.Real_Time.Seconds (1);
+         delay until Start_Time + Ada.Real_Time.Milliseconds (100);
       end loop;
    end BARO_Reader;
 

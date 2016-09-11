@@ -5,6 +5,11 @@
 package SPI1.MPU9250
 with
   SPARK_Mode => On,
+  Abstract_State => (State with External),
   Elaborate_Body
 is
+
+   --  Has the MPU9250 identified itself correctly?
+   Device_Identified : Boolean := False;
+
 end SPI1.MPU9250;

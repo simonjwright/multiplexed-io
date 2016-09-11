@@ -12,18 +12,23 @@ with SPI;
 package $SPI.Device
 with
   SPARK_Mode,
-  Abstract_State => (State with External),
-  Initializes => State,
+  Abstract_State => ((State with External),
+                     Initialization),
+  Initializes => Initialization,
   Elaborate_Body
 is
 
-   function Initialized return Boolean;
+   function Initialized return Boolean
+   with
+     Global => (Input => Initialization);
 
    procedure Initialize (Maximum_Frequency : Natural)
    with
      Pre => not Initialized,
      Post => Initialized,
-     Depends => (State => (Maximum_Frequency));
+     Global => (Output => (State, Initialization)),
+     Depends => (State => (Maximum_Frequency),
+                 Initialization => null);
    --  The maximum achievable frequency is the bus clock / 2, with
    --  values reducing by powers of 2 down to bus clock / 256.
 
@@ -37,18 +42,21 @@ is
    procedure Read_SPI (Bytes : out SPI.Byte_Array)
    with
      Pre => Initialized,
+     Global => (In_Out => State),
      Depends => (State => State,
                  Bytes => State);
 
    procedure Write_SPI (Bytes : SPI.Byte_Array)
    with
      Pre => Initialized,
+     Global => (In_Out => State),
      Depends => (State => (State, Bytes));
 
    procedure Command_SPI (Command    :     SPI.Byte_Array;
                           Result     : out SPI.Byte_Array)
    with
      Pre => Initialized,
+     Global => (In_Out => State),
      Depends => (State => (State, Command),
                  Result => (State, Command));
 
