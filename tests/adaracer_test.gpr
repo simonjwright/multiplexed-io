@@ -1,0 +1,20 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+with "../drivers/spi1/spi1.gpr";
+with "../drivers/spi2/spi2.gpr";
+
+project AdaRacer_Test extends "../environment.gpr" is
+
+   for Main use ("adaracer_test.adb");
+   for Exec_Dir use ".";
+
+   for Source_Dirs use ("src");
+   for Object_Dir use ".build-adaracer_test-" & RTS;
+
+   package Builder is
+      for Executable ("adaracer_test.adb") use "adaracer_test-" & RTS;
+   end Builder;
+
+end AdaRacer_Test;

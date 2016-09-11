@@ -1,0 +1,27 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+---------------------------------------------------------------------
+--  This is the main project file for building the adaracer_test
+--  demonstrator (the executable will be adaracer_test-adaracer or
+--  adaracer_test-stm32f4 depending on the scenario variable RTS,
+--  default adaracer).
+---------------------------------------------------------------------
+
+aggregate project AdaRacer_Test_Build extends "../environment.gpr" is
+
+   case RTS is
+      when "adaracer" =>
+         for Project_Path use ("../stm32f429x");
+      when "stm32f4" =>
+         for Project_Path use ("../stm32f40x");
+   end case;
+
+   for Project_Files use ("adaracer_test.gpr");
+
+   package Builder is
+      for Switches (others) use ("--create-map-file");
+   end Builder;
+
+end AdaRacer_Test_Build;
