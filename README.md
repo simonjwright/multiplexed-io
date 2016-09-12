@@ -32,7 +32,7 @@ which looks great, but under the hood GNAT implements this as
        bitfield_of_local_variable := value;
        register := local_variable;
 
-and suffers the usual concurrency-related problems. The only apparent solution is to mark the subprograms that have to modify device registers as being out of SPARK (`pragma SPARK_Mode (Off);`), and supply alternative reasoning to justify the code (I haven't done this :-).
+and suffers the usual concurrency-related problems. The only apparent solution to the *gnatprove* issue (not, of course, to the underlying concurrency vulnerability) is to mark the subprograms that have to modify device registers as being out of SPARK (`pragma SPARK_Mode (Off);`), and supply alternative reasoning to justify the code (I haven't done this :-).
 
 ## Concurrent access
 
@@ -40,7 +40,9 @@ We have two devices using SPI2, the BARO (MS5611) and the FRAM (FM25V02). It is 
 
 One approach would be to arrange a schedule so that each device is given its own time slot(s). That would be fine for the MS5611 on its own - bearing in mind that it requres two accesses to perform a measurement, the first to start the process and the second to fetch the result, which must occur after an interval depending on the measurement precision (9 ms for the highest precision). However the purpose of the FRAM is to store application parameters and checkpoint data, which might be quite hard to schedule with the MS5611.
 
-Here, I've used an Ada protected object. To write a command and its parameter, and retrieve the associated data, is performed within one protected action, so that other Ada tasks that try to access the same SPI will be blocked. One might want to arrange that these activities take place at a lower priority than others (RMA scheduling, perhaps). Timing remains to be done.
+Here, I've used an Ada protected object. Writing a command and its parameter, and retrieving the associated data, is performed within one protected action, so that other Ada tasks that try to access the same SPI will be blocked. One might want to arrange that these activities take place at a lower priority than others (RMA scheduling, perhaps), and there's the protected object's [ceiling priority](http://www.ada-auth.org/standards/rm12_w_tc1/html/RM-D-3.html) to organise also (the default is `System.Priority'Last`, i.e. the highest priority).
+
+Timing remains to be done.
 
 ## GNAT Project Files
 
