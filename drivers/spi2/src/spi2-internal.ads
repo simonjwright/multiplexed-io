@@ -33,14 +33,16 @@ is
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with
      Pre => Initialized,
-     Global => (In_Out => State),
+     Global => (In_Out => State,
+                Proof_In => Initialization),
      Depends => (State => State,
                  Bytes => (State, The_Device));
 
    procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
    with
      Pre => Initialized,
-     Global => (In_Out => State),
+     Global => (In_Out => State,
+                Proof_In => Initialization),
      Depends => (State => (State, The_Device, Bytes));
 
    procedure Command_SPI (The_Device :     Device;
@@ -48,7 +50,8 @@ is
                           Result     : out Byte_Array)
    with
      Pre => Initialized,
-     Global => (In_Out => State),
+     Global => (In_Out => State,
+                Proof_In => Initialization),
      Depends => (State => (State, The_Device, Command),
                  Result => (State, The_Device, Command));
 

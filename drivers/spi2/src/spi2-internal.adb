@@ -9,7 +9,7 @@ with STM32_SVD.RCC;
 
 package body SPI2.Internal
 with
-  SPARK_Mode => Off,  -- or loops in "generation of Global contracts"
+  SPARK_Mode => Off, -- or gnatprove crashes
   Refined_State => (State => Implementation,
                     Initialization => Initialize_Done)
 is
@@ -46,7 +46,9 @@ is
    procedure Select_Device (The_Device : Device) with Inline;
    procedure Deselect_Device (The_Device : Device) with Inline;
 
-   protected body Implementation is
+   protected body Implementation
+   with SPARK_Mode => Off
+   is
 
       procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
       with SPARK_Mode => Off
@@ -86,6 +88,7 @@ is
 
    procedure Select_Device (The_Device : Device)
    is
+      pragma SPARK_Mode (Off);
    begin
       case The_Device is
          when BARO =>
@@ -99,6 +102,7 @@ is
 
    procedure Deselect_Device (The_Device : Device)
    is
+      pragma SPARK_Mode (Off);
    begin
       case The_Device is
          when BARO =>
