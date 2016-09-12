@@ -2,15 +2,20 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with Ada.Real_Time;
 with Interfaces;
 
-with SPI2.Internal;
-pragma Elaborate_All (SPI2.Internal);
-
 package body SPI2.BARO
-with SPARK_Mode => On
+with
+  SPARK_Mode => On,
+  Refined_State => (State => (BARO_Reader,
+                              Coefficients),
+                    Initialization => (Initialization_Status,
+                                       Measurement))
 is
+
+   Initialization_Status : Device_Status := Uninitialized;
+
+   Measurement : Pressure := 1000_00;
 
    type BARO_Command is (ADC_Read,
                          Reset,
@@ -55,20 +60,99 @@ is
                          Prom_Read_7              => 16#ae#);
 
    function Enum_Rep (Command : BARO_Command) return Interfaces.Unsigned_8;
+
+   type Coefficient_Index is (SENS_T1, OFF_T1, TCS, TCO, T_REF, TEMPSENS);
+   subtype Coefficient is Float range 0.0 .. 2.0 ** 16 - 1.0;
+   Coefficients : array (Coefficient_Index) of Coefficient := (others => 0.0);
+
+   function CRC4 (Bytes : Internal.Byte_Array) return Interfaces.Unsigned_8;
+
+   task BARO_Reader;
+   --  pragma Annotate
+   --    (Gnatprove,
+   --       Intentional,
+   --       """Coefficients"" might not be initialized before start of tasks",
+   --       "initialized at start of task");
+
+   function Status return Device_Status is (Initialization_Status);
+
+   function Current_Pressure return Pressure is (Measurement);
+
    function Enum_Rep (Command : BARO_Command) return Interfaces.Unsigned_8
      is (Command'Enum_Rep)
    with SPARK_Mode => Off;
 
-   type Coefficient_Index is (SENS_T1, OFF_T1, TCS, TCO, T_REF, TEMPSENS);
-   subtype Coefficient is Float range 0.0 .. 2.0 ** 16 - 1.0;
-   Coefficients : array (Coefficient_Index) of Coefficient;
+   function CRC4 (Bytes : Internal.Byte_Array) return Interfaces.Unsigned_8 is
+      CRC : Interfaces.Unsigned_16;
+      use type Interfaces.Unsigned_16;
+   begin
+      CRC := 0;
+      for J in Bytes'Range loop
+         if J < Bytes'Last then
+            CRC := CRC xor Interfaces.Unsigned_16 (Bytes (J));
+         end if;
+         for K in 1 .. 8 loop
+            if (CRC and 16#8000#) /= 0 then
+               CRC := Interfaces.Shift_Left (CRC, 1) xor 16#3000#;
+            else
+               CRC := Interfaces.Shift_Left (CRC, 1);
+            end if;
+         end loop;
+      end loop;
+      CRC := Interfaces.Shift_Right (CRC, 12) and 16#000f#;
+      return Interfaces.Unsigned_8 (CRC);
+   end CRC4;
 
-   task BARO_Reader;
-   pragma Annotate
-     (Gnatprove,
-        Intentional,
-        """Coefficients"" might not be initialized before start of tasks",
-        "initialized at start of task");
+   procedure Initialize is
+      Raw_Coefficients : Internal.Byte_Array (0 .. 15);
+      Start_Time : Ada.Real_Time.Time;
+      use type Ada.Real_Time.Time;
+      use type Interfaces.Unsigned_8;
+   begin
+      if not Internal.Initialized then
+         Internal.Initialize;
+      end if;
+
+      --  Reset the MS5611
+      Internal.Write_SPI (Internal.BARO, (0 => Enum_Rep (Reset)));
+      --  MS5611 needs 2.8 ms
+      pragma Warnings (Off, "unused assignment");
+      pragma Warnings (Off, "statement has no effect");
+      Start_Time := Ada.Real_Time.Clock;
+      delay until Start_Time + Ada.Real_Time.Milliseconds (5);
+      pragma Warnings (On, "statement has no effect");
+      pragma Warnings (On, "unused assignment");
+
+      --  Read the coefficients
+      for J in 0 .. 7 loop
+         Internal.Command_SPI
+           (Internal.BARO,
+            (0 => Enum_Rep (Prom_Read_0) + 2 * Interfaces.Unsigned_8 (J)),
+            Raw_Coefficients (J * 2 .. J * 2 + 1));
+      end loop;
+
+      --  Check the CRC
+      if ((CRC4 (Raw_Coefficients)
+             xor Raw_Coefficients (Raw_Coefficients'Last))
+            and 16#0f#) /= 0
+      then
+         pragma Annotate
+           (Gnatprove,
+              False_Positive,
+              """Raw_Coefficients"" might not be initialized",
+              "all are covered in loop");
+         Initialization_Status := Invalid_CRC;
+         return;
+      end if;
+
+      for J in 1 .. 6 loop
+         Coefficients (Coefficient_Index'Val (J - 1)) :=
+           Float (Integer (Raw_Coefficients (J * 2)) * 256
+                    + Integer (Raw_Coefficients (J * 2 + 1)));
+      end loop;
+
+      Initialization_Status := OK;
+   end Initialize;
 
    task body BARO_Reader is
       Raw : Internal.Byte_Array (0 .. 2);
@@ -95,28 +179,12 @@ is
       Start_Time : Ada.Real_Time.Time;
       use type Ada.Real_Time.Time;
    begin
-      --  Reset the MS5611
-      Internal.Write_SPI (Internal.BARO, (0 => Enum_Rep (Reset)));
-      --  MS5611 needs 2.8 ms
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (3);
-
-      --  Read the coefficients (I'm not bothering with the device data &
-      --  the CRC yet)
-
-      for J in 1 .. 6 loop
-         declare
-            Raw : Internal.Byte_Array (0 .. 1);
-            use type Interfaces.Unsigned_8;
-         begin
-            Internal.Command_SPI
-              (Internal.BARO,
-               (0 => Enum_Rep (Prom_Read_0) + 2 * Interfaces.Unsigned_8 (J)),
-               Raw);
-            Coefficients (Coefficient_Index'Val (J - 1)) :=
-              Float (Integer (Raw (0)) * 256 + Integer (Raw (1)));
-         end;
+      --  wait for initialization complete
+      while Status /= OK loop
+         Start_Time := Ada.Real_Time.Clock;
+         delay until Start_Time + Ada.Real_Time.Milliseconds (250);
       end loop;
+      pragma Assume (Internal.Initialized, "as part of Initialize");
 
       loop
          --  process temperature

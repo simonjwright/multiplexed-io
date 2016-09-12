@@ -10,8 +10,16 @@ with STM32_SVD.RCC;
 package body SPI2.Internal
 with
   SPARK_Mode => Off,  -- or loops in "generation of Global contracts"
-  Refined_State => (State => (Implementation))
+  Refined_State => (State => Implementation,
+                    Initialization => Initialize_Done)
 is
+
+   Initialize_Done : Boolean := False;
+
+   function Initialized return Boolean is
+   begin
+      return Initialize_Done;
+   end Initialized;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    is
@@ -32,24 +40,6 @@ is
    begin
       Implementation.Command_SPI (The_Device, Command, Result);
    end Command_SPI;
-
-   --  From schematics_38180-2_adaracer_1.1, SPI2 uses pins
-   --
-   --  PB10 - SCLK
-   --  PB14 - MISO
-   --  PB15 - MOSI
-   --
-   --  /BARO CS - PD7
-   --  /FRAM CS - PD10
-   --
-   --  From RM0090 Issue 11 Fig 27, SPI2 uses GPIO AF5 or AF6.
-   --  This is WRONG, see DocID024030 Rev 8 Table 12; it's AF5.
-   --  From RM0090 Issue 11 Table 1, SPI2 is on APB1 (42 MHz with our
-   --  settings).
-   --
-   --  From DA5611-01BA03_011 page 4, the maximum SCLK is 20 MHz.
-   --  This means we will need to run the SPI with a divisor of 4
-   --  (=> 10.5 MHz).
 
    use STM32_SVD;
 
@@ -89,6 +79,11 @@ is
 
    end Implementation;
 
+   --  From schematics_38180-2_adaracer_1.1, SPI2 uses pins
+   --
+   --  /BARO CS - PD7
+   --  /FRAM CS - PD10
+
    procedure Select_Device (The_Device : Device)
    is
    begin
@@ -115,29 +110,32 @@ is
       end case;
    end Deselect_Device;
 
-begin
-   pragma SPARK_Mode (Off);
+   procedure Initialize
+   with
+     SPARK_Mode => Off
+   is
+   begin
+      --  Enable GPIOD
+      RCC.RCC_Periph.AHB1ENR.GPIODEN := 1;
 
-   --  First, deselect FRAM, BARO.
+      --  PD10, /FRAM CS
+      GPIO.GPIOD_Periph.MODER.Arr (10)     := 2#01#; -- general-purpose output
+      GPIO.GPIOD_Periph.OTYPER.OT.Arr (10) := 0;     -- push-pull
+      GPIO.GPIOD_Periph.OSPEEDR.Arr (10)   := 2#10#; -- high speed
+      GPIO.GPIOD_Periph.PUPDR.Arr (10)     := 2#00#; -- no pullup/down
+      GPIO.GPIOD_Periph.BSRR.BS.Arr (10)   := 1;     -- set bit
 
-   --  Enable GPIOD
-   RCC.RCC_Periph.AHB1ENR.GPIODEN := 1;
+      --  PD7, /BARO CS
+      GPIO.GPIOD_Periph.MODER.Arr (7)     := 2#01#; -- general-purpose output
+      GPIO.GPIOD_Periph.OTYPER.OT.Arr (7) := 0;     -- push-pull
+      GPIO.GPIOD_Periph.OSPEEDR.Arr (7)   := 2#10#; -- high speed
+      GPIO.GPIOD_Periph.PUPDR.Arr (7)     := 2#00#; -- no pullup/down
+      GPIO.GPIOD_Periph.BSRR.BS.Arr (7)   := 1;     -- set bit
 
-   --  PD10, /FRAM CS
-   GPIO.GPIOD_Periph.MODER.Arr (10)     := 2#01#; -- general-purpose output
-   GPIO.GPIOD_Periph.OTYPER.OT.Arr (10) := 0;     -- push-pull
-   GPIO.GPIOD_Periph.OSPEEDR.Arr (10)   := 2#10#; -- high speed
-   GPIO.GPIOD_Periph.PUPDR.Arr (10)     := 2#00#; -- no pullup/down
-   GPIO.GPIOD_Periph.BSRR.BS.Arr (10)   := 1;     -- set bit
+      SPI2.Device.Initialize (Maximum_Frequency => 20_000_000);
+      --  This is the limit for MS5611, DA5611-01BA03_011, Oct 26, 2012, p4
 
-   --  PD7, /BARO CS
-   GPIO.GPIOD_Periph.MODER.Arr (7)     := 2#01#; -- general-purpose output
-   GPIO.GPIOD_Periph.OTYPER.OT.Arr (7) := 0;     -- push-pull
-   GPIO.GPIOD_Periph.OSPEEDR.Arr (7)   := 2#10#; -- high speed
-   GPIO.GPIOD_Periph.PUPDR.Arr (7)     := 2#00#; -- no pullup/down
-   GPIO.GPIOD_Periph.BSRR.BS.Arr (7)   := 1;     -- set bit
-
-   SPI2.Device.Initialize (Maximum_Frequency => 20_000_000);
-   --  This is the limit for MS5611, DA5611-01BA03_011, Oct 26, 2012, p4
+      Initialize_Done := True;
+   end Initialize;
 
 end SPI2.Internal;

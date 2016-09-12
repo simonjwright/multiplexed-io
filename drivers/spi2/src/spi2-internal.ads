@@ -7,11 +7,24 @@ with SPI;
 --  private --  (can't say this with Abstract_State)
 package SPI2.Internal
 with
-  SPARK_Mode,
-  Abstract_State => (State with External),
-  Initializes => State,
+  SPARK_Mode => On,
+  Abstract_State => ((State with External),
+                     Initialization),
+  Initializes => Initialization,
   Elaborate_Body
 is
+
+   function Initialized return Boolean
+   with
+     Global => (Input => Initialization);
+
+   procedure Initialize
+   with
+     Pre => not Initialized,
+     Post => Initialized,
+     Global => (Output => (State, Initialization)),
+     Depends => (State => null,
+                 Initialization => null);
 
    type Device is (BARO, FRAM);
 
@@ -19,12 +32,14 @@ is
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with
+     Pre => Initialized,
      Global => (In_Out => State),
      Depends => (State => State,
                  Bytes => (State, The_Device));
 
    procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
    with
+     Pre => Initialized,
      Global => (In_Out => State),
      Depends => (State => (State, The_Device, Bytes));
 
@@ -32,6 +47,7 @@ is
                           Command    :     Byte_Array;
                           Result     : out Byte_Array)
    with
+     Pre => Initialized,
      Global => (In_Out => State),
      Depends => (State => (State, The_Device, Command),
                  Result => (State, The_Device, Command));
@@ -55,6 +71,7 @@ private
 
       procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
       with
+        Pre => Initialized,
         Global => (In_Out => State),
         Depends => (Implementation => Implementation,
                     State => State,
@@ -62,6 +79,7 @@ private
 
       procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
       with
+        Pre => Initialized,
         Global => (In_Out => State),
         Depends => (Implementation => Implementation,
                     State => (State, The_Device, Bytes));
@@ -70,6 +88,7 @@ private
                              Command    :     Byte_Array;
                              Result     : out Byte_Array)
       with
+        Pre => Initialized,
         Global => (In_Out => State),
         Depends => (Implementation => Implementation,
                     State => (State, The_Device, Command),

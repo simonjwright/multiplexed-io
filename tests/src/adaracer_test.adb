@@ -16,6 +16,7 @@ with
 is
    use type Ada.Real_Time.Time;
 begin
+   SPI2.BARO.Initialize;
    New_Line;
    Put_Line ("               AdaRacer Test");
    Put_Line ("               =============");
@@ -40,9 +41,17 @@ begin
             when 'b' | 'B' =>
                Put_Line ("BARO demo: reporting pressure in mB * 100");
                for J in 1 .. 10 loop
-                  Put_Line
-                    ("pressure:"
-                       & SPI2.BARO.Pressure'Image (SPI2.BARO.Measurement));
+                  case SPI2.BARO.Status is
+                     when SPI2.BARO.OK =>
+                        Put_Line
+                          ("pressure:"
+                             & SPI2.BARO.Pressure'Image
+                               (SPI2.BARO.Current_Pressure));
+                     when SPI2.BARO.Uninitialized  =>
+                        Put_Line ("status is Uninitialized");
+                     when SPI2.BARO.Invalid_CRC  =>
+                        Put_Line ("status is Invalid_CRC");
+                  end case;
                   delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
                end loop;
 
