@@ -2,15 +2,15 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+with SPI2.Internal;
+pragma Elaborate_All (SPI2.Internal);
+
+with Ada.Real_Time;
 with Interfaces;
 
 package body SPI2.BARO
 with
-  SPARK_Mode => On,
-  Refined_State => (State => (BARO_Reader,
-                              Coefficients),
-                    Initialization => (Initialization_Status,
-                                       Measurement))
+  SPARK_Mode => On
 is
 
    Initialization_Status : Device_Status := Uninitialized;
@@ -68,11 +68,12 @@ is
    function CRC4 (Bytes : Internal.Byte_Array) return Interfaces.Unsigned_8;
 
    task BARO_Reader;
-   --  pragma Annotate
-   --    (Gnatprove,
-   --       Intentional,
-   --       """Coefficients"" might not be initialized before start of tasks",
-   --       "initialized at start of task");
+   pragma Annotate
+     (Gnatprove,
+        Intentional,
+        """spi2.internal.initialize_done"" might not be initialized",
+        "initialized via Elaborate_All");
+   --  The above pragma Annotate has no effect.
 
    function Status return Device_Status is (Initialization_Status);
 
@@ -117,11 +118,11 @@ is
       Internal.Write_SPI (Internal.BARO, (0 => Enum_Rep (Reset)));
       --  MS5611 needs 2.8 ms
       pragma Warnings (Off, "unused assignment");
-      pragma Warnings (Off, "statement has no effect");
       Start_Time := Ada.Real_Time.Clock;
+      pragma Warnings (On, "unused assignment");
+      pragma Warnings (Off, "statement has no effect");
       delay until Start_Time + Ada.Real_Time.Milliseconds (5);
       pragma Warnings (On, "statement has no effect");
-      pragma Warnings (On, "unused assignment");
 
       --  Read the coefficients
       for J in 0 .. 7 loop

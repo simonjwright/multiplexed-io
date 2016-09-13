@@ -4,27 +4,21 @@
 
 with SPI;
 
---  private --  (can't say this with Abstract_State)
+private
 package SPI2.Internal
 with
   SPARK_Mode => On,
-  Abstract_State => ((State with External),
-                     Initialization),
-  Initializes => Initialization,
   Elaborate_Body
 is
 
    function Initialized return Boolean
    with
-     Global => (Input => Initialization);
+     Inline;
 
    procedure Initialize
    with
      Pre => not Initialized,
-     Post => Initialized,
-     Global => (Output => (State, Initialization)),
-     Depends => (State => null,
-                 Initialization => null);
+     Post => Initialized;
 
    type Device is (BARO, FRAM);
 
@@ -32,28 +26,17 @@ is
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with
-     Pre => Initialized,
-     Global => (In_Out => State,
-                Proof_In => Initialization),
-     Depends => (State => State,
-                 Bytes => (State, The_Device));
+     Pre => Initialized;
 
    procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
    with
-     Pre => Initialized,
-     Global => (In_Out => State,
-                Proof_In => Initialization),
-     Depends => (State => (State, The_Device, Bytes));
+     Pre => Initialized;
 
    procedure Command_SPI (The_Device :     Device;
                           Command    :     Byte_Array;
                           Result     : out Byte_Array)
    with
-     Pre => Initialized,
-     Global => (In_Out => State,
-                Proof_In => Initialization),
-     Depends => (State => (State, The_Device, Command),
-                 Result => (State, The_Device, Command));
+     Pre => Initialized;
 
 private
 
@@ -69,33 +52,21 @@ private
    --  In any case, the lockout won't be very long (some timing data
    --  needed here!).
    protected Implementation
-   with Part_Of => State
    is
 
       procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
       with
-        Pre => Initialized,
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => State,
-                    Bytes => (State, The_Device));
+        Pre => Initialized;
 
       procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
       with
-        Pre => Initialized,
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => (State, The_Device, Bytes));
+        Pre => Initialized;
 
       procedure Command_SPI (The_Device :     Device;
                              Command    :     Byte_Array;
                              Result     : out Byte_Array)
       with
-        Pre => Initialized,
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => (State, The_Device, Command),
-                    Result => (State, The_Device, Command));
+        Pre => Initialized;
 
    end Implementation;
 

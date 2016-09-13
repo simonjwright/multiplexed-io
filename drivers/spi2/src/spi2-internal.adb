@@ -9,17 +9,12 @@ with STM32_SVD.RCC;
 
 package body SPI2.Internal
 with
-  SPARK_Mode => Off, -- or gnatprove crashes
-  Refined_State => (State => Implementation,
-                    Initialization => Initialize_Done)
+  SPARK_Mode => On
 is
 
    Initialize_Done : Boolean := False;
 
-   function Initialized return Boolean is
-   begin
-      return Initialize_Done;
-   end Initialized;
+   function Initialized return Boolean is (Initialize_Done);
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    is

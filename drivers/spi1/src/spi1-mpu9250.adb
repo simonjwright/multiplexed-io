@@ -11,12 +11,10 @@ pragma Elaborate_All (SPI1.Internal);
 
 package body SPI1.MPU9250
 with
-  SPARK_Mode => On,
-  Refined_State => (State => MPU9250_Reader)
+  SPARK_Mode => On
 is
 
-   task MPU9250_Reader
-   with Global => Device_Identified;
+   task MPU9250_Reader;
 
    task body MPU9250_Reader is
       Start_Time : Ada.Real_Time.Time;
@@ -24,7 +22,7 @@ is
    begin
       --  Some time needed for MPU9250 to warm up
       Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (5);
+      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
 
       loop
          declare

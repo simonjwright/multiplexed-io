@@ -4,12 +4,10 @@
 
 with SPI;
 
---  private --  (can't say this with Abstract_State)
+private
 package SPI1.Internal
 with
   SPARK_Mode,
-  Abstract_State => (State with External),
-  Initializes => State,
   Elaborate_Body
 is
 
@@ -17,24 +15,13 @@ is
 
    subtype Byte_Array is SPI.Byte_Array;
 
-   procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-   with
-     Global => (In_Out => State),
-     Depends => (State => State,
-                 Bytes => (State, The_Device));
+   procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array);
 
-   procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-   with
-     Global => (In_Out => State),
-     Depends => (State => (State, The_Device, Bytes));
+   procedure Write_SPI (The_Device : Device; Bytes : Byte_Array);
 
    procedure Command_SPI (The_Device :     Device;
                           Command    :     Byte_Array;
-                          Result     : out Byte_Array)
-   with
-     Global => (In_Out => State),
-     Depends => (State => (State, The_Device, Command),
-                 Result => (State, The_Device, Command));
+                          Result     : out Byte_Array);
 
 private
 
@@ -50,30 +37,15 @@ private
    --  In any case, the lockout won't be very long (some timing data
    --  needed here!).
    protected Implementation
-   with Part_Of => State
    is
 
-      procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-      with
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => State,
-                    Bytes => (State, The_Device));
+      procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array);
 
-      procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-      with
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => (State, The_Device, Bytes));
+      procedure Write_SPI (The_Device : Device; Bytes : Byte_Array);
 
       procedure Command_SPI (The_Device :     Device;
                              Command    :     Byte_Array;
-                             Result     : out Byte_Array)
-      with
-        Global => (In_Out => State),
-        Depends => (Implementation => Implementation,
-                    State => (State, The_Device, Command),
-                    Result => (State, The_Device, Command));
+                             Result     : out Byte_Array);
 
    end Implementation;
 

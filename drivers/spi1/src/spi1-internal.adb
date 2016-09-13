@@ -9,8 +9,7 @@ with STM32_SVD.RCC;
 
 package body SPI1.Internal
 with
-  SPARK_Mode => Off,  -- or loops in "generation of Global contracts"
-  Refined_State => (State => (Implementation))
+  SPARK_Mode => On
 is
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
@@ -46,7 +45,9 @@ is
    procedure Select_Device (The_Device : Device) with Inline;
    procedure Deselect_Device (The_Device : Device) with Inline;
 
-   protected body Implementation is
+   protected body Implementation
+   with SPARK_Mode => Off
+   is
 
       procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
       with SPARK_Mode => Off
@@ -80,6 +81,7 @@ is
    end Implementation;
 
    procedure Select_Device (The_Device : Device)
+   with SPARK_Mode => Off
    is
    begin
       case The_Device is
@@ -90,6 +92,7 @@ is
    end Select_Device;
 
    procedure Deselect_Device (The_Device : Device)
+   with SPARK_Mode => Off
    is
    begin
       case The_Device is

@@ -14,9 +14,7 @@ with STM32_SVD.RCC;
 
 package body $I2C
 with
-  SPARK_Mode    => Off,  -- or generation of Global contracts takes forever
-  Refined_State => (State => (Initialize_Done,
-                              Implementation))
+  SPARK_Mode    => Off  -- or generation of Global contracts takes forever
 is
 
    Initialize_Done : Boolean := False;
@@ -177,7 +175,9 @@ is
       Implementation.Write (To, Data);
    end Write;
 
-   protected body Implementation is
+   protected body Implementation
+   with SPARK_Mode => Off
+   is
 
       procedure Read (From : Chip_Address; To : out Byte)
       is
