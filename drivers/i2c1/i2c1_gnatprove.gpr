@@ -3,6 +3,7 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with "../i2c/i2c_gnatprove.gpr";
+with "../../utilities/utilities_gnatprove.gpr";
 with "../../stm32f429x/stm32_svd.gpr";
 
 project I2C1_Gnatprove is
