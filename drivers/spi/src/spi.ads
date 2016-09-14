@@ -10,6 +10,7 @@ with
   Pure
 is
 
-   type Byte_Array is array (Natural range <>) of Interfaces.Unsigned_8;
+   type Byte_Array is array (Natural range <>) of Interfaces.Unsigned_8
+   with Component_Size => 8;
 
 end SPI;
