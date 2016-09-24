@@ -8,7 +8,7 @@ with
   Elaborate_Body
 is
 
-   --  Has the MPU9250 identified itself correctly?
-   Device_Identified : Boolean := False;
+   MPU9250_Device_Identified : Boolean := False;
+   AK8963_Device_Identified : Boolean := False;
 
 end SPI1.MPU9250;

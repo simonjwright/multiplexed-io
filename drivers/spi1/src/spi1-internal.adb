@@ -12,26 +12,6 @@ with
   SPARK_Mode => On
 is
 
-   procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-   is
-   begin
-      Implementation.Read_SPI (The_Device, Bytes);
-   end Read_SPI;
-
-   procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-   is
-   begin
-      Implementation.Write_SPI (The_Device, Bytes);
-   end Write_SPI;
-
-   procedure Command_SPI (The_Device :     Device;
-                          Command    :     Byte_Array;
-                          Result     : out Byte_Array)
-   is
-   begin
-      Implementation.Command_SPI (The_Device, Command, Result);
-   end Command_SPI;
-
    --  From schematics_38180-2_adaracer_1.1, SPI1 uses pins
    --
    --  PA5 - SCLK
@@ -45,40 +25,34 @@ is
    procedure Select_Device (The_Device : Device) with Inline;
    procedure Deselect_Device (The_Device : Device) with Inline;
 
-   protected body Implementation
+   procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with SPARK_Mode => Off
    is
+   begin
+      Select_Device (The_Device);
+      SPI1.Device.Read_SPI (Bytes);
+      Deselect_Device (The_Device);
+   end Read_SPI;
 
-      procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
-      with SPARK_Mode => Off
-      is
-      begin
-         Select_Device (The_Device);
-         SPI1.Device.Read_SPI (Bytes);
-         Deselect_Device (The_Device);
-      end Read_SPI;
+   procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
+   with SPARK_Mode => Off
+   is
+   begin
+      Select_Device (The_Device);
+      SPI1.Device.Write_SPI (Bytes);
+      Deselect_Device (The_Device);
+   end Write_SPI;
 
-      procedure Write_SPI (The_Device : Device; Bytes : Byte_Array)
-      with SPARK_Mode => Off
-      is
-      begin
-         Select_Device (The_Device);
-         SPI1.Device.Write_SPI (Bytes);
-         Deselect_Device (The_Device);
-      end Write_SPI;
-
-      procedure Command_SPI (The_Device :     Device;
-                             Command    :     Byte_Array;
-                             Result     : out Byte_Array)
-      with SPARK_Mode => Off
-      is
-      begin
-         Select_Device (The_Device);
-         SPI1.Device.Command_SPI (Command, Result);
-         Deselect_Device (The_Device);
-      end Command_SPI;
-
-   end Implementation;
+   procedure Command_SPI (The_Device :     Device;
+                          Command    :     Byte_Array;
+                          Result     : out Byte_Array)
+   with SPARK_Mode => Off
+   is
+   begin
+      Select_Device (The_Device);
+      SPI1.Device.Command_SPI (Command, Result);
+      Deselect_Device (The_Device);
+   end Command_SPI;
 
    procedure Select_Device (The_Device : Device)
    with SPARK_Mode => Off
@@ -118,6 +92,6 @@ begin
    GPIO.GPIOC_Periph.BSRR.BS.Arr (2)   := 1;     -- set bit
 
    SPI1.Device.Initialize (Maximum_Frequency => 1_000_000);
-   --  This is the limit for MPU9250, PS-MPU-9250A-01 rev 1.0, Table 7
+   --  The limit for MPU9250 is 1 MHz, PS-MPU-9250A-01 rev 1.0, Table 7
 
 end SPI1.Internal;

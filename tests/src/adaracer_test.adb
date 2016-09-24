@@ -74,9 +74,13 @@ begin
             when 'm' | 'M' =>
                Put_Line ("MPU9250 demo: incomplete");
                for J in 1 .. 10 loop
-                  Put_Line
-                    ("identified: "
-                       & Boolean'Image (SPI1.MPU9250.Device_Identified));
+                  Put ("MPU9250 identified: ");
+                  Put (Boolean'Image (SPI1.MPU9250.MPU9250_Device_Identified));
+                  Put (", AK8963 identified: ");
+                  Put (Boolean'Image (SPI1.MPU9250.AK8963_Device_Identified));
+                  New_Line;
+                  SPI1.MPU9250.MPU9250_Device_Identified := False;
+                  SPI1.MPU9250.AK8963_Device_Identified := False;
                   delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
                end loop;
 

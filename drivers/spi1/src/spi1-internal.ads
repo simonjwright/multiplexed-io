@@ -11,6 +11,10 @@ with
   Elaborate_Body
 is
 
+   --  This package assumes that - while there may be multiple devices
+   --  on the SPI1 bus - they will all be accessed by the same task, so
+   --  there is no need for mutual exclusion.
+
    type Device is (MPU9250);
 
    subtype Byte_Array is SPI.Byte_Array;
@@ -22,31 +26,5 @@ is
    procedure Command_SPI (The_Device :     Device;
                           Command    :     Byte_Array;
                           Result     : out Byte_Array);
-
-private
-
-   --  We use a protected type here because we might have to protect
-   --  the bus from concurrent access by MPU and ???.
-   --
-   --  Under Ravenscar restrictions, it doesn't appear possible to
-   --  implement a standard Lock scheme since the maximum entry queue
-   --  length is 1 (for SPI1, there might not be a problem, since
-   --  there are only two devices; but ... we don't know how many
-   --  tasks might want to access the FRAM).
-   --
-   --  In any case, the lockout won't be very long (some timing data
-   --  needed here!).
-   protected Implementation
-   is
-
-      procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array);
-
-      procedure Write_SPI (The_Device : Device; Bytes : Byte_Array);
-
-      procedure Command_SPI (The_Device :     Device;
-                             Command    :     Byte_Array;
-                             Result     : out Byte_Array);
-
-   end Implementation;
 
 end SPI1.Internal;

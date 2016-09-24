@@ -20,13 +20,13 @@ sources: $(SOURCES)
 
 src/spi1-device.ads: ../spi/src/spi-device.ads.pp $(DEFINITION)
 	gnatprep				\
-	  -c -r -v				\
+	  -c -v					\
 	  $<					\
 	  $@					\
 	  $(DEFINITION)
 src/spi1-device.adb: ../spi/src/spi-device.adb.pp $(DEFINITION)
 	gnatprep				\
-	  -c -r -v				\
+	  -c -v					\
 	  $<					\
 	  $@					\
 	  $(DEFINITION)

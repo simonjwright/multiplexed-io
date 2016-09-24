@@ -1,4 +1,3 @@
-pragma Source_Reference (1, "../spi/src/spi-device.ads.pp");
 --  Demonstration code for the AdaPilot project
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
