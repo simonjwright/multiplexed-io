@@ -21,6 +21,13 @@ is
 
    task MPU9250_Reader;
 
+   type Coordinate is (X, Y, Z);
+
+   type AK8963_Calibrations is array (Coordinate) of Float;
+
+   procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations);
+   --  Includes magnetometer scaling. Leaves device powered down
+
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8;
 
@@ -33,21 +40,24 @@ is
    function Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register)
                         return Interfaces.Unsigned_8;
 
+   procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
+                          Bytes : out SPI.Byte_Array);
+
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
                            Byte :  Interfaces.Unsigned_8);
+
+   procedure Delay_For (Milliseconds : Integer);
 
    function To_Integer
      (Hi, Lo : Interfaces.Unsigned_8) return Integer;
 
    task body MPU9250_Reader is
-      Start_Time : Ada.Real_Time.Time;
-      use type Ada.Real_Time.Time;
+      Magnetometer_Calibrations : AK8963_Calibrations;
       use type Interfaces.Unsigned_8;
       use MPU9250_Registers;
    begin
       --  Some time needed for MPU9250 to warm up
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Delay_For (100);
 
       pragma Assert (Read_9250 (WHOAMI) = 16#71#, "huh?");
 
@@ -55,8 +65,7 @@ is
       Write_9250 (PWR_MGMT_1,
                   Convert (Power_Management_1'(H_RESET => 1, others => <>)));
 
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Delay_For (100);
 
       --  Select best available clock source
       Write_9250 (PWR_MGMT_1,
@@ -95,38 +104,31 @@ is
                                          I2C_IF_DIS => 1,
                                          others => <>)));
 
-      --  I2C clock to 400 kHz (13), 381 kHz (14), 258 kHz (8)
+      --  I2C clock to 348 kHz
       Write_9250 (I2C_MST_CTRL,
-                  Convert (I2C_Master_Control'(I2C_MST_CLK => K_308,
+                  Convert (I2C_Master_Control'(I2C_MST_CLK => K_348,
                                                others => <>)));
-
       --  wait a bit
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Delay_For (100);
 
-      --  Reading from the AK8963 ..
-      --  .. check the ID
+      --  Put the AK8963 into power-down
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Power_Down,
+                                        others => <>)));
+      --  wait a bit
+      Delay_For (100);
+
       --  pragma Assert (Read_AK8963 (WIA) = 16#48#,
       --                   "wrong ID for AK8963");
       Put_Line ("AK8963 ID should be 72, is " & Read_AK8963 (WIA)'Img);
 
-      --  More AK8963 stuff here
-
       --  Reset ..
       Write_AK8963 (CNTL2,
                     Convert (Control_2'(SRST => 1, others => <>)));
-
       --  wait a bit
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Delay_For (100);
 
-      --  Clear reset (XXX needed?)
-      Write_AK8963 (CNTL2,
-                    Convert (Control_2'(SRST => 0, others => <>)));
-
-      --  wait a bit
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Calibrate_AK8963 (Magnetometer_Calibrations);
 
       --  Set for continuous measurement (16-bits, at 100 Hz)
       Write_AK8963 (CNTL1,
@@ -135,8 +137,7 @@ is
                                         others => <>)));
 
       --  wait a bit
-      Start_Time := Ada.Real_Time.Clock;
-      delay until Start_Time + Ada.Real_Time.Milliseconds (100);
+      Delay_For (100);
 
       loop
          MPU9250_Device_Identified := Read_9250 (WHOAMI) = 16#71#;
@@ -181,31 +182,69 @@ is
          --  ready for next cycle.
          declare
             XYZ : SPI.Byte_Array (HXL .. ST2);
+            Raw : array (Coordinate) of Integer;
+            Milligauss : array (Coordinate) of Float;
             Start, Finish : Cycle_Timer.Cycles;
             use type Cycle_Timer.Cycles;
          begin
             Start := Cycle_Timer.Clock;
-            for J in XYZ'Range loop
-               XYZ (J) := Read_AK8963 (Interfaces.Unsigned_8 (J));
-            end loop;
+            Read_AK8963 (HXL, XYZ);
             Finish := Cycle_Timer.Clock;
             Put_Line ("reading mag: " & Integer (Finish - Start)'Img);
-            Put (" mx: "
-                   & To_Integer (Lo => XYZ (HXL),
-                                 Hi => XYZ (HXH))'Img);
-            Put (" my: "
-                        & To_Integer (Lo => XYZ (HYL),
-                                      Hi => XYZ (HYH))'Img);
-            Put (" mz: "
-                        & To_Integer (Lo => XYZ (HZL),
-                                      Hi => XYZ (HZH))'Img);
+            Raw (X) := To_Integer (Lo => XYZ (HXL),
+                                   Hi => XYZ (HXH));
+            Raw (Y) := To_Integer (Lo => XYZ (HYL),
+                                   Hi => XYZ (HYH));
+            Raw (Z) := To_Integer (Lo => XYZ (HZL),
+                                   Hi => XYZ (HZH));
+            Milligauss (X) := Float (Raw (X)) * Magnetometer_Calibrations (X);
+            Milligauss (Y) := Float (Raw (Y)) * Magnetometer_Calibrations (Y);
+            Milligauss (Z) := Float (Raw (Z)) * Magnetometer_Calibrations (Z);
+            Put ("mx: " & Integer (Milligauss (X))'Img);
+            Put (" my: " & Integer (Milligauss (Y))'Img);
+            Put (" mz: " & Integer (Milligauss (Z))'Img);
+            --  Put ("mx: "
+            --         & To_Integer (Lo => XYZ (HXL),
+            --                       Hi => XYZ (HXH))'Img);
+            --  Put (" my: "
+            --              & To_Integer (Lo => XYZ (HYL),
+            --                            Hi => XYZ (HYH))'Img);
+            --  Put (" mz: "
+            --              & To_Integer (Lo => XYZ (HZL),
+            --                            Hi => XYZ (HZH))'Img);
             New_Line;
          end;
 
-         Start_Time := Start_Time + Ada.Real_Time.Milliseconds (1000);
-         delay until Start_Time;
+         Delay_For (1000);
       end loop;
    end MPU9250_Reader;
+
+   procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
+   is
+      Raw : SPI.Byte_Array (1 .. 3);
+      Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
+      --  for 16-bit resolution
+      use MPU9250_Registers;
+   begin
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Power_Down,
+                                        others => <>)));
+      Delay_For (10);
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Fuse_ROM_Access,
+                                        others => <>)));
+      Read_AK8963 (ASAX, Raw);
+      Calibrations (X) := (Float (Raw (1)) - 128.0) / 256.0 + 1.0;
+      Calibrations (Y) := (Float (Raw (2)) - 128.0) / 256.0 + 1.0;
+      Calibrations (Z) := (Float (Raw (3)) - 128.0) / 256.0 + 1.0;
+      for C of Calibrations loop
+         C := C * Magnetometer_Scaling;
+      end loop;
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Power_Down,
+                                        others => <>)));
+      Delay_For (10);
+   end Calibrate_AK8963;
 
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8
@@ -243,28 +282,27 @@ is
    function Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register)
                         return Interfaces.Unsigned_8
    is
+      Bytes : SPI.Byte_Array (1 .. 1);
+   begin
+      Read_AK8963 (From_Register, Bytes);
+      return Bytes (1);
+   end Read_AK8963;
+
+   procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
+                          Bytes : out SPI.Byte_Array)
+   is
       use MPU9250_Registers;
    begin
-      Write_9250 (I2C_SLV4_ADDR,
+      Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 1,
                                               I2C_ID => AK8963_ID)));
-      Write_9250 (I2C_SLV4_REG, From_Register);
-      Write_9250 (I2C_SLV4_CTRL,
-                  Convert (I2C_Slave4_Control'(I2C_SLV4_EN => 1,
-                                               others => <>)));
-      declare
-         Status : Interfaces.Unsigned_8;
-         --  declared outside the loop so we can debug in case we get stuck
-         Count : Interfaces.Unsigned_64 := 0;
-         use type Interfaces.Unsigned_64;
-      begin
-         loop
-            Status := Read_9250 (I2C_MST_STATUS);
-            exit when Convert (Status).I2C_SLV4_DONE /= 0;
-            Count := Count + 1;
-         end loop;
-      end;
-      return Read_9250 (I2C_SLV4_DI);
+      Write_9250 (I2C_SLV0_REG, From_Register);
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
+                                              I2C_SLV_LENG => Bytes'Length,
+                                              others => <>)));
+      Read_9250 (EXT_SENS_DATA,
+                 Bytes);
    end Read_AK8963;
 
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
@@ -272,14 +310,15 @@ is
    is
       use MPU9250_Registers;
    begin
-      Write_9250 (I2C_SLV4_ADDR,
+      Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 0,
                                               I2C_ID => AK8963_ID)));
-      Write_9250 (I2C_SLV4_REG, To_Register);
-      Write_9250 (I2C_SLV4_DO, Byte);
-      Write_9250 (I2C_SLV4_CTRL,
-                  Convert (I2C_Slave4_Control'(I2C_SLV4_EN => 1,
-                                               others => <>)));
+      Write_9250 (I2C_SLV0_REG, To_Register);
+      Write_9250 (I2C_SLV0_DO, Byte);
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
+                                              I2C_SLV_LENG => 1,
+                                              others => <>)));
    end Write_AK8963;
 
    function To_Integer
@@ -291,5 +330,14 @@ is
    begin
       return Integer (Convert_Bytes ((0 => Lo, 1 => Hi)));
    end To_Integer;
+
+   procedure Delay_For (Milliseconds : Integer)
+   is
+      Start_Time : Ada.Real_Time.Time;
+      use type Ada.Real_Time.Time;
+   begin
+      Start_Time := Ada.Real_Time.Clock;
+      delay until Start_Time + Ada.Real_Time.Milliseconds (Milliseconds);
+   end Delay_For;
 
 end SPI1.MPU9250;
