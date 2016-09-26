@@ -108,12 +108,12 @@ is
    type Accel_Configuration_2 is record
       Reserved_4_7 : Bits_4 := 0;
       ACCEL_FCHOICE_B : Bits_2 := 0;
-      A_DLPF_CFG : Bits_2 := 0;
+      A_DLPFCFG : Bits_2 := 0;
    end record with Size => 8;
    for Accel_Configuration_2 use record
       Reserved_4_7 at 0 range 4 .. 7;
       ACCEL_FCHOICE_B at 0 range 2 .. 3;
-      A_DLPF_CFG at 0 range 0 .. 1;
+      A_DLPFCFG at 0 range 0 .. 1;
    end record;
    function Convert is new Ada.Unchecked_Conversion (Accel_Configuration_2,
                                                      Interfaces.Unsigned_8);
@@ -441,13 +441,17 @@ is
    subtype Information is Interfaces.Unsigned_8;
 
    type Status_1 is record
-      Reserved_1_7 : Bits_7 := 0;
+      Reserved_2_7 : Bits_6 := 0;
+      DOR : Bit := 0;
       DRDY : Bit := 0;
    end record with Size => 8;
    for Status_1 use record
-      Reserved_1_7 at 0 range 1 .. 7;
+      Reserved_2_7 at 0 range 2 .. 7;
+      DOR at 0 range 1 .. 1;
       DRDY at 0 range 0 .. 0;
    end record;
+   function Convert is new Ada.Unchecked_Conversion (Interfaces.Unsigned_8,
+                                                     Status_1);
 
    subtype Low_Byte is Interfaces.Unsigned_8;
    subtype High_Byte is Interfaces.Integer_8;
@@ -464,6 +468,8 @@ is
       HOFL at 0 range 3 .. 3;
       Reserved_0_2 at 0 range 0 .. 2;
    end record;
+   function Convert is new Ada.Unchecked_Conversion (Interfaces.Unsigned_8,
+                                                     Status_2);
 
    type Operation_Mode_Setting is
      (Power_Down,
@@ -513,9 +519,11 @@ is
    end record;
    for Self_Test_Control use record
       Reserved_7_7 at 0 range 7 .. 7;
-      Self at 0 range 6 .. 6;
+      SELF at 0 range 6 .. 6;
       Reserved_0_5 at 0 range 0 .. 5;
    end record;
+   function Convert is new Ada.Unchecked_Conversion (Self_Test_Control,
+                                                     Interfaces.Unsigned_8);
 
    --  Not going to define Test 1, 2 or I2C Disable.
 

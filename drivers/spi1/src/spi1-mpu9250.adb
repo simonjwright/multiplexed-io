@@ -12,6 +12,7 @@ pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
 with Cycle_Timer;
+with Nanosleep;
 with Ada.Text_IO; use Ada.Text_IO;
 
 package body SPI1.MPU9250
@@ -24,9 +25,17 @@ is
    type Coordinate is (X, Y, Z);
 
    type AK8963_Calibrations is array (Coordinate) of Float;
+   type AK8963_Components is array (Coordinate) of Float;
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations);
-   --  Includes magnetometer scaling. Leaves device powered down
+   --  Includes magnetometer scaling. Leaves device powered down.
+
+   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
+                               OK : out Boolean);
+   --  Leaves device powered down.
+
+   procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
+                                     Components : out AK8963_Components);
 
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8;
@@ -53,6 +62,7 @@ is
 
    task body MPU9250_Reader is
       Magnetometer_Calibrations : AK8963_Calibrations;
+      AK8963_OK : Boolean := False;
       use type Interfaces.Unsigned_8;
       use MPU9250_Registers;
    begin
@@ -75,24 +85,30 @@ is
       Write_9250 (PWR_MGMT_2,
                   Convert (Power_Management_2'(others => <>)));
 
-      --  Not going to use DLPF yet
-      Write_9250 (CONFIG,
-                  Convert (Configuration'(DLPF_CFG => 0, others => <>)));
+      --  Sample rate divider 0 means that the data rates selected
+      --  below are unchanged.
+      Write_9250 (SMPLRT_DIV, 0);
 
-      --  Not going to use DLPF yet, 2000 dpi
+      --  Set DLPF for gyro/temp bandwidth 184 Hz (temp bandwidth 188
+      --  Hz), data rate 1 kHz
+      Write_9250 (CONFIG,
+                  Convert (Configuration'(DLPF_CFG => 1, others => <>)));
+
+      --  DLPF as above, 2000 dpi
       Write_9250 (GYRO_CONFIG,
-                  Convert (Gyro_Configuration'(F_CHOICE_B => 3,
+                  Convert (Gyro_Configuration'(F_CHOICE_B => 0,
                                                GYRO_FS_SEL => 3,
                                                others => <>)));
 
-      --  +/- 4g
+      --  +/- 8g
       Write_9250 (ACCEL_CONFIG,
                   Convert (Accel_Configuration'(ACCEL_FS_SEL => 2,
                                                 others => <>)));
 
-      --  Not going to use DLPF yet
+      --  Using DLPF, bandwidth 218.1, data rate 1 kHz
       Write_9250 (ACCEL_CONFIG_2,
-                  Convert (Accel_Configuration_2'(ACCEL_FCHOICE_B => 1,
+                  Convert (Accel_Configuration_2'(ACCEL_FCHOICE_B => 0,
+                                                  A_DLPFCFG => 0,
                                                   others => <>)));
 
       --  I2C (AK8963) setup
@@ -101,15 +117,20 @@ is
       --  XXX should turn off I2C slave nearer the start?
       Write_9250 (USER_CTRL,
                   Convert (User_Control'(I2C_MST_EN => 1,
-                                         I2C_IF_DIS => 1,
+                                         --  I2C_IF_DIS => 1,
                                          others => <>)));
 
-      --  I2C clock to 348 kHz
+      --  Set I2C clock. K_348 is the "default" (i.e. the one with
+      --  Enum_Rep = 0).
       Write_9250 (I2C_MST_CTRL,
                   Convert (I2C_Master_Control'(I2C_MST_CLK => K_348,
                                                others => <>)));
       --  wait a bit
       Delay_For (100);
+
+      --  pragma Assert (Read_AK8963 (WIA) = 16#48#,
+      --                   "wrong ID for AK8963");
+      Put_Line ("AK8963 ID should be 72, is " & Read_AK8963 (WIA)'Img);
 
       --  Put the AK8963 into power-down
       Write_AK8963 (CNTL1,
@@ -118,10 +139,6 @@ is
       --  wait a bit
       Delay_For (100);
 
-      --  pragma Assert (Read_AK8963 (WIA) = 16#48#,
-      --                   "wrong ID for AK8963");
-      Put_Line ("AK8963 ID should be 72, is " & Read_AK8963 (WIA)'Img);
-
       --  Reset ..
       Write_AK8963 (CNTL2,
                     Convert (Control_2'(SRST => 1, others => <>)));
@@ -129,11 +146,13 @@ is
       Delay_For (100);
 
       Calibrate_AK8963 (Magnetometer_Calibrations);
+      Self_Test_AK8963 (Calibrations => Magnetometer_Calibrations,
+                        OK           => AK8963_OK);
 
-      --  Set for continuous measurement (16-bits, at 100 Hz)
+      --  Kick off a magnetometer measurement
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(BITS => 1,
-                                        MODE => Continuous_Measurement_2,
+                                        MODE => Single_Measurement,
                                         others => <>)));
 
       --  wait a bit
@@ -175,45 +194,49 @@ is
             New_Line;
          end;
 
-         --  Read WIA from the AK8963
-         AK8963_Device_Identified := Read_AK8963 (WIA) = 16#48#;
-
-         --  Read measurements from the AK8963; we must read ST2 to
-         --  ready for next cycle.
+         --  There is an issue with reading WIA: you have to repeat
+         --  the call up to 4 times to get the "right" answer.
          declare
-            XYZ : SPI.Byte_Array (HXL .. ST2);
-            Raw : array (Coordinate) of Integer;
-            Milligauss : array (Coordinate) of Float;
+            ID : Interfaces.Unsigned_8;
+         begin
+            Put ("WIA: ");
+            for J in 1 .. 10 loop
+               ID := Read_AK8963 (WIA);
+               Put (ID'Img);
+            end loop;
+            New_Line;
+            AK8963_Device_Identified := ID = 16#48#;
+         end;
+
+         --  Read measurements from the AK8963
+         declare
+            DRDY_Loops : Natural := 0;
+            Milligauss : AK8963_Components;
             Start, Finish : Cycle_Timer.Cycles;
             use type Cycle_Timer.Cycles;
          begin
             Start := Cycle_Timer.Clock;
-            Read_AK8963 (HXL, XYZ);
+            loop
+               DRDY_Loops := DRDY_Loops + 1;
+               exit when Status_1'(Convert (Read_AK8963 (ST1))).DRDY /= 0;
+            end loop;
+            Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
             Finish := Cycle_Timer.Clock;
-            Put_Line ("reading mag: " & Integer (Finish - Start)'Img);
-            Raw (X) := To_Integer (Lo => XYZ (HXL),
-                                   Hi => XYZ (HXH));
-            Raw (Y) := To_Integer (Lo => XYZ (HYL),
-                                   Hi => XYZ (HYH));
-            Raw (Z) := To_Integer (Lo => XYZ (HZL),
-                                   Hi => XYZ (HZH));
-            Milligauss (X) := Float (Raw (X)) * Magnetometer_Calibrations (X);
-            Milligauss (Y) := Float (Raw (Y)) * Magnetometer_Calibrations (Y);
-            Milligauss (Z) := Float (Raw (Z)) * Magnetometer_Calibrations (Z);
+            Put_Line ("reading mag: "
+                        & Integer (Finish - Start)'Img
+                        & ", loops"
+                        & DRDY_Loops'Img);
             Put ("mx: " & Integer (Milligauss (X))'Img);
             Put (" my: " & Integer (Milligauss (Y))'Img);
             Put (" mz: " & Integer (Milligauss (Z))'Img);
-            --  Put ("mx: "
-            --         & To_Integer (Lo => XYZ (HXL),
-            --                       Hi => XYZ (HXH))'Img);
-            --  Put (" my: "
-            --              & To_Integer (Lo => XYZ (HYL),
-            --                            Hi => XYZ (HYH))'Img);
-            --  Put (" mz: "
-            --              & To_Integer (Lo => XYZ (HZL),
-            --                            Hi => XYZ (HZH))'Img);
             New_Line;
          end;
+
+         --  Kick off a magnetometer measurement
+         Write_AK8963 (CNTL1,
+                       Convert (Control_1'(BITS => 1,
+                                           MODE => Single_Measurement,
+                                           others => <>)));
 
          Delay_For (1000);
       end loop;
@@ -221,7 +244,7 @@ is
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
    is
-      Raw : SPI.Byte_Array (1 .. 3);
+      Raw : SPI.Byte_Array (0 .. 2) := (others => 0);
       Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
       --  for 16-bit resolution
       use MPU9250_Registers;
@@ -234,9 +257,10 @@ is
                     Convert (Control_1'(MODE => Fuse_ROM_Access,
                                         others => <>)));
       Read_AK8963 (ASAX, Raw);
-      Calibrations (X) := (Float (Raw (1)) - 128.0) / 256.0 + 1.0;
-      Calibrations (Y) := (Float (Raw (2)) - 128.0) / 256.0 + 1.0;
-      Calibrations (Z) := (Float (Raw (3)) - 128.0) / 256.0 + 1.0;
+      for C in Coordinate'Range loop
+         Calibrations (C) :=
+           (Float (Raw (Coordinate'Pos (C))) - 128.0) / 256.0 + 1.0;
+      end loop;
       for C of Calibrations loop
          C := C * Magnetometer_Scaling;
       end loop;
@@ -245,6 +269,60 @@ is
                                         others => <>)));
       Delay_For (10);
    end Calibrate_AK8963;
+
+   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
+                               OK : out Boolean)
+   is
+      Components : AK8963_Components := (others => 0.0);
+      use MPU9250_Registers;
+   begin
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Power_Down,
+                                        others => <>)));
+      Delay_For (10);
+      Write_AK8963 (ASTC,
+                    Convert (Self_Test_Control'(SELF => 1,
+                                                others => <>)));
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Self_Test,
+                                        others => <>)));
+      loop
+         exit when Status_1'(Convert (Read_AK8963 (ST1))).DRDY /= 0;
+      end loop;
+      Read_AK8963_Components (Calibrations, Components);
+      Put ("stmx: " & Integer (Components (X))'Img);
+      Put (" stmy: " & Integer (Components (Y))'Img);
+      Put (" stmz: " & Integer (Components (Z))'Img);
+      New_Line;
+      Write_AK8963 (ASTC,
+                    Convert (Self_Test_Control'(SELF => 0,
+                                                others => <>)));
+      Write_AK8963 (CNTL1,
+                    Convert (Control_1'(MODE => Power_Down,
+                                        others => <>)));
+      Delay_For (10);
+   end Self_Test_AK8963;
+
+   procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
+                                     Components : out AK8963_Components)
+   is
+      use MPU9250_Registers;
+      --  Measurements from the AK8963; we must read ST2 to ready for
+      --  next cycle.
+      XYZ : SPI.Byte_Array (HXL .. ST2) := (others => 0);
+      Raw : array (Coordinate) of Integer;
+   begin
+      Read_AK8963 (HXL, XYZ);
+      Raw (X) := To_Integer (Lo => XYZ (HXL),
+                             Hi => XYZ (HXH));
+      Raw (Y) := To_Integer (Lo => XYZ (HYL),
+                             Hi => XYZ (HYH));
+      Raw (Z) := To_Integer (Lo => XYZ (HZL),
+                             Hi => XYZ (HZH));
+      for Axis in Coordinate'Range loop
+         Components (Axis) := Float (Raw (Axis)) * Calibrations (Axis);
+      end loop;
+   end Read_AK8963_Components;
 
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8
@@ -301,6 +379,8 @@ is
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
                                               I2C_SLV_LENG => Bytes'Length,
                                               others => <>)));
+      --  At least 3 bytes to transfer at ~350 kHz, 70 us
+      Nanosleep.Sleep (Nanosleep.To_Interval (0.000_070));
       Read_9250 (EXT_SENS_DATA,
                  Bytes);
    end Read_AK8963;
@@ -310,6 +390,10 @@ is
    is
       use MPU9250_Registers;
    begin
+      --  Put_Line ("Write_AK8963: To_Register :"
+      --              & Integer'Image (Integer (To_Register))
+      --              & ", Byte"
+      --              & Integer'Image (Integer (Byte)));
       Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 0,
                                               I2C_ID => AK8963_ID)));
