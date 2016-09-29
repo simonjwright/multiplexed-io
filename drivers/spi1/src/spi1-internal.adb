@@ -91,7 +91,7 @@ begin
    GPIO.GPIOC_Periph.PUPDR.Arr (2)     := 2#00#; -- no pullup/down
    GPIO.GPIOC_Periph.BSRR.BS.Arr (2)   := 1;     -- set bit
 
-   SPI1.Device.Initialize (Maximum_Frequency => 500_000);
+   SPI1.Device.Initialize (Maximum_Frequency => 1_000_000);
    --  The limit for MPU9250 is 1 MHz, PS-MPU-9250A-01 rev 1.0, Table 7
 
 end SPI1.Internal;

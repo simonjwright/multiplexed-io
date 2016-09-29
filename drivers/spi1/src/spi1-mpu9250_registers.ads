@@ -51,11 +51,21 @@ is
    subtype Sample_Rate_Divider is Interfaces.Unsigned_8;
    SMPLRT_DIV : constant := 25;
 
+   type Configuration_DLPF_Bandwidth is
+     (Hz_250,
+      Hz_184,
+      Hz_92,
+      Hz_41,
+      Hz_20,
+      Hz_10,
+      Hz_5,
+      Hz_3600) with Size => 3;
+   --  Only meaningful when Gyro_Configuration.F_Choice_B is 3
    type Configuration is record
       Reserved_7_7 : Bit := 0;
       FIFO_MODE : Bit := 0;
       EXT_SYNC_SET : Bits_3 := 0;
-      DLPF_CFG : Bits_3 := 0;
+      DLPF_CFG : Configuration_DLPF_Bandwidth := Hz_250;
    end record with Size => 8;
    for Configuration use record
       Reserved_7_7 at 0 range 7 .. 7;
@@ -67,11 +77,16 @@ is
                                                      Interfaces.Unsigned_8);
    CONFIG : constant := 26;
 
+   type Gyro_Full_Scale_Select is
+     (Dps_250,
+      Dps_500,
+      Dps_1000,
+      Dps_2000) with Size => 2;
    type Gyro_Configuration is record
       XGYRO_CTEN : Bit := 0;
       YGYRO_CTEN : Bit := 0;
       ZGYRO_CTEN : Bit := 0;
-      GYRO_FS_SEL : Bits_2 := 0;
+      GYRO_FS_SEL : Gyro_Full_Scale_Select := Dps_250;
       Reserved_2_2 : Bit := 0;
       F_CHOICE_B : Bits_2 := 0;
    end record with Size => 8;
@@ -87,11 +102,16 @@ is
                                                      Interfaces.Unsigned_8);
    GYRO_CONFIG : constant := 27;
 
+   type Accel_Full_Scale_Select is
+     (G_2,
+      G_4,
+      G_8,
+      G_16) with Size => 2;
    type Accel_Configuration is record
       AX_ST_EN : Bit := 0;
       AY_ST_EN : Bit := 0;
       AZ_ST_EN : Bit := 0;
-      ACCEL_FS_SEL : Bits_2 := 0;
+      ACCEL_FS_SEL : Accel_Full_Scale_Select := G_2;
       Reserved_0_2 : Bits_3 := 0;
    end record with Size => 8;
    for Accel_Configuration use record
@@ -105,15 +125,24 @@ is
                                                      Interfaces.Unsigned_8);
    ACCEL_CONFIG : constant := 28;
 
+   type Accel_Bandwidth is
+     (Hz_218_A,
+      Hz_218_B,
+      Hz_99,
+      Hz_44,
+      Hz_21,
+      Hz_10,
+      Hz_5,
+      Hz_420) with Size => 3;
    type Accel_Configuration_2 is record
       Reserved_4_7 : Bits_4 := 0;
-      ACCEL_FCHOICE_B : Bits_2 := 0;
-      A_DLPFCFG : Bits_2 := 0;
+      ACCEL_FCHOICE_B : Bit := 0;
+      A_DLPFCFG : Accel_Bandwidth := Hz_218_A;
    end record with Size => 8;
    for Accel_Configuration_2 use record
       Reserved_4_7 at 0 range 4 .. 7;
-      ACCEL_FCHOICE_B at 0 range 2 .. 3;
-      A_DLPFCFG at 0 range 0 .. 1;
+      ACCEL_FCHOICE_B at 0 range 3 .. 3;
+      A_DLPFCFG at 0 range 0 .. 2;
    end record;
    function Convert is new Ada.Unchecked_Conversion (Accel_Configuration_2,
                                                      Interfaces.Unsigned_8);

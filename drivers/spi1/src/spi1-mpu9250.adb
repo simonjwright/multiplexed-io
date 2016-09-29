@@ -5,13 +5,13 @@
 with Ada.Real_Time;
 with Ada.Unchecked_Conversion;
 with Interfaces;
+with System;
 
 with SPI;
 with SPI1.Internal;
 pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
-with Cycle_Timer;
 with Nanosleep;
 with Ada.Text_IO; use Ada.Text_IO;
 
@@ -20,19 +20,29 @@ with
   SPARK_Mode => On
 is
 
-   task MPU9250_Reader;
+   task MPU9250_Reader
+   with Priority => System.Default_Priority - 1;
+   --  This is temporary; it means that if we hang (at least, in a
+   --  delay) the remainder of the test application can still run.
 
    type Coordinate is (X, Y, Z);
 
+   type MPU9250_Components is array (Coordinate) of Float;
    type AK8963_Calibrations is array (Coordinate) of Float;
    type AK8963_Components is array (Coordinate) of Float;
+
+   procedure Self_Test_9250 (Ok : out Boolean);
+   --  Leaves device configured for self test.
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations);
    --  Includes magnetometer scaling. Leaves device powered down.
 
-   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
-                               OK : out Boolean);
+   procedure Self_Test_AK8963 (Ok : out Boolean);
    --  Leaves device powered down.
+
+   procedure Read_MPU9250_Components
+     (From_Register : MPU9250_Registers.MPU9250_Register;
+      Components : out MPU9250_Components);
 
    procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
                                      Components : out AK8963_Components);
@@ -62,14 +72,30 @@ is
 
    task body MPU9250_Reader is
       Magnetometer_Calibrations : AK8963_Calibrations;
-      AK8963_OK : Boolean := False;
+      Last_Accel : MPU9250_Components := (others => 0.0);
+      Last_Gyro : MPU9250_Components := (others => 0.0);
+      Last_Mag : AK8963_Components := (others => 0.0);
+      MPU9250_Ok : Boolean := False;
+      AK8963_Ok : Boolean := False;
       use type Interfaces.Unsigned_8;
       use MPU9250_Registers;
    begin
       --  Some time needed for MPU9250 to warm up
       Delay_For (100);
 
-      pragma Assert (Read_9250 (WHOAMI) = 16#71#, "huh?");
+      declare
+         ID : constant Interfaces.Unsigned_8 := Read_9250 (WHOAMI);
+      begin
+         if ID = 16#71# then
+            Put_Line ("MPU9250 recognised");
+         elsif ID = 16#73# then
+            Put_Line ("MPU9255 (?) recognised");
+         else
+            raise Program_Error
+            with "don't recognise MPU9250,"
+              & " WHOAMI is neither 16#71# nor 16#73#";
+         end if;
+      end;
 
       --  Reset the device
       Write_9250 (PWR_MGMT_1,
@@ -85,30 +111,27 @@ is
       Write_9250 (PWR_MGMT_2,
                   Convert (Power_Management_2'(others => <>)));
 
+      Self_Test_9250 (Ok => MPU9250_Ok);
+
+      --  Configure for running
+
       --  Sample rate divider 0 means that the data rates selected
       --  below are unchanged.
       Write_9250 (SMPLRT_DIV, 0);
 
-      --  Set DLPF for gyro/temp bandwidth 184 Hz (temp bandwidth 188
-      --  Hz), data rate 1 kHz
+      --  Set DLPF and ranges for gyro/temp/accel
       Write_9250 (CONFIG,
-                  Convert (Configuration'(DLPF_CFG => 1, others => <>)));
-
-      --  DLPF as above, 2000 dpi
+                  Convert (Configuration'(DLPF_CFG => Hz_184, others => <>)));
       Write_9250 (GYRO_CONFIG,
                   Convert (Gyro_Configuration'(F_CHOICE_B => 0,
-                                               GYRO_FS_SEL => 3,
+                                               GYRO_FS_SEL => Dps_2000,
                                                others => <>)));
-
-      --  +/- 8g
       Write_9250 (ACCEL_CONFIG,
-                  Convert (Accel_Configuration'(ACCEL_FS_SEL => 2,
+                  Convert (Accel_Configuration'(ACCEL_FS_SEL => G_8,
                                                 others => <>)));
-
-      --  Using DLPF, bandwidth 218.1, data rate 1 kHz
       Write_9250 (ACCEL_CONFIG_2,
                   Convert (Accel_Configuration_2'(ACCEL_FCHOICE_B => 0,
-                                                  A_DLPFCFG => 0,
+                                                  A_DLPFCFG => Hz_218_B,
                                                   others => <>)));
 
       --  I2C (AK8963) setup
@@ -117,7 +140,7 @@ is
       --  XXX should turn off I2C slave nearer the start?
       Write_9250 (USER_CTRL,
                   Convert (User_Control'(I2C_MST_EN => 1,
-                                         --  I2C_IF_DIS => 1,
+                                         I2C_IF_DIS => 1,
                                          others => <>)));
 
       --  Set I2C clock. K_348 is the "default" (i.e. the one with
@@ -146,15 +169,13 @@ is
       Delay_For (100);
 
       Calibrate_AK8963 (Magnetometer_Calibrations);
-      Self_Test_AK8963 (Calibrations => Magnetometer_Calibrations,
-                        OK           => AK8963_OK);
+      Self_Test_AK8963 (AK8963_Ok);
 
-      --  Kick off a magnetometer measurement
+      --  Kick off magnetometer measurements (100 Hz)
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(BITS => 1,
-                                        MODE => Single_Measurement,
+                                        MODE => Continuous_Measurement_2,
                                         others => <>)));
-
       --  wait a bit
       Delay_For (100);
 
@@ -163,13 +184,8 @@ is
 
          declare
             ATG : SPI.Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
-            Start, Finish : Cycle_Timer.Cycles;
-            use type Cycle_Timer.Cycles;
          begin
-            Start := Cycle_Timer.Clock;
             Read_9250 (ACCEL_XOUT_H, ATG);
-            Finish := Cycle_Timer.Clock;
-            Put_Line ("reading atg: " & Integer (Finish - Start)'Img);
             Put ("ax: "
                    & To_Integer (Lo => ATG (ACCEL_XOUT_L),
                                  Hi => ATG (ACCEL_XOUT_H))'Img);
@@ -194,53 +210,248 @@ is
             New_Line;
          end;
 
-         --  There is an issue with reading WIA: you have to repeat
-         --  the call up to 4 times to get the "right" answer.
-         declare
-            ID : Interfaces.Unsigned_8;
-         begin
-            Put ("WIA: ");
-            for J in 1 .. 10 loop
-               ID := Read_AK8963 (WIA);
-               Put (ID'Img);
-            end loop;
-            New_Line;
-            AK8963_Device_Identified := ID = 16#48#;
-         end;
-
-         --  Read measurements from the AK8963
-         declare
-            DRDY_Loops : Natural := 0;
-            Milligauss : AK8963_Components;
-            Start, Finish : Cycle_Timer.Cycles;
-            use type Cycle_Timer.Cycles;
-         begin
-            Start := Cycle_Timer.Clock;
-            loop
-               DRDY_Loops := DRDY_Loops + 1;
-               exit when Status_1'(Convert (Read_AK8963 (ST1))).DRDY /= 0;
-            end loop;
-            Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
-            Finish := Cycle_Timer.Clock;
-            Put_Line ("reading mag: "
-                        & Integer (Finish - Start)'Img
-                        & ", loops"
-                        & DRDY_Loops'Img);
-            Put ("mx: " & Integer (Milligauss (X))'Img);
-            Put (" my: " & Integer (Milligauss (Y))'Img);
-            Put (" mz: " & Integer (Milligauss (Z))'Img);
-            New_Line;
-         end;
-
-         --  Kick off a magnetometer measurement
-         Write_AK8963 (CNTL1,
-                       Convert (Control_1'(BITS => 1,
-                                           MODE => Single_Measurement,
-                                           others => <>)));
+            --  Read measurements from the AK8963
+            declare
+               Milligauss : AK8963_Components;
+            begin
+               Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
+               if Milligauss = Last_Mag then
+                  Put_Line ("magnetometer unchanged");
+               else
+                  Last_Mag := Milligauss;
+                  Put ("mag: ");
+                  for M of Milligauss loop
+                     Put (Integer (M)'Img & " ");
+                  end loop;
+                  New_Line;
+               end if;
+            end;
 
          Delay_For (1000);
       end loop;
    end MPU9250_Reader;
+
+   procedure Self_Test_9250 (Ok : out Boolean)
+   is
+      use MPU9250_Registers;
+      Raw_Gyro_Self_Test : array (Coordinate) of Interfaces.Unsigned_8;
+      Gyro_Factory : MPU9250_Components;
+      Raw_Accel_Self_Test : array (Coordinate) of Interfaces.Unsigned_8;
+      Accel_Factory : MPU9250_Components;
+      Gyro_Unmodified : MPU9250_Components := (others => 0.0);
+      Accel_Unmodified : MPU9250_Components := (others => 0.0);
+      Gyro_Self_Test : MPU9250_Components := (others => 0.0);
+      Accel_Self_Test : MPU9250_Components := (others => 0.0);
+      use type Interfaces.Unsigned_8;
+
+      --  This from Ada Drivers Library
+      --  components/src/motion/mpu9250/mpu9250.ads.
+      --
+      --  It represents 2620 * (1.01 ** n).
+      --
+      --  They have some wierd check for a zero value ...
+      MPU9250_ST_TB : constant array (0 .. 255) of Interfaces.Unsigned_16
+        := (
+            2620, 2646, 2672, 2699, 2726, 2753, 2781, 2808,
+            2837, 2865, 2894, 2923, 2952, 2981, 3011, 3041,
+            3072, 3102, 3133, 3165, 3196, 3228, 3261, 3293,
+            3326, 3359, 3393, 3427, 3461, 3496, 3531, 3566,
+            3602, 3638, 3674, 3711, 3748, 3786, 3823, 3862,
+            3900, 3939, 3979, 4019, 4059, 4099, 4140, 4182,
+            4224, 4266, 4308, 4352, 4395, 4439, 4483, 4528,
+            4574, 4619, 4665, 4712, 4759, 4807, 4855, 4903,
+            4953, 5002, 5052, 5103, 5154, 5205, 5257, 5310,
+            5363, 5417, 5471, 5525, 5581, 5636, 5693, 5750,
+            5807, 5865, 5924, 5983, 6043, 6104, 6165, 6226,
+            6289, 6351, 6415, 6479, 6544, 6609, 6675, 6742,
+            6810, 6878, 6946, 7016, 7086, 7157, 7229, 7301,
+            7374, 7448, 7522, 7597, 7673, 7750, 7828, 7906,
+            7985, 8065, 8145, 8227, 8309, 8392, 8476, 8561,
+            8647, 8733, 8820, 8909, 8998, 9088, 9178, 9270,
+            9363, 9457, 9551, 9647, 9743, 9841, 9939, 10038,
+            10139, 10240, 10343, 10446, 10550, 10656, 10763, 10870,
+            10979, 11089, 11200, 11312, 11425, 11539, 11654, 11771,
+            11889, 12008, 12128, 12249, 12371, 12495, 12620, 12746,
+            12874, 13002, 13132, 13264, 13396, 13530, 13666, 13802,
+            13940, 14080, 14221, 14363, 14506, 14652, 14798, 14946,
+            15096, 15247, 15399, 15553, 15709, 15866, 16024, 16184,
+            16346, 16510, 16675, 16842, 17010, 17180, 17352, 17526,
+            17701, 17878, 18057, 18237, 18420, 18604, 18790, 18978,
+            19167, 19359, 19553, 19748, 19946, 20145, 20347, 20550,
+            20756, 20963, 21173, 21385, 21598, 21814, 22033, 22253,
+            22475, 22700, 22927, 23156, 23388, 23622, 23858, 24097,
+            24338, 24581, 24827, 25075, 25326, 25579, 25835, 26093,
+            26354, 26618, 26884, 27153, 27424, 27699, 27976, 28255,
+            28538, 28823, 29112, 29403, 29697, 29994, 30294, 30597,
+            30903, 31212, 31524, 31839, 32157, 32479, 32804, 33132
+           );
+   begin
+      Ok := False;
+
+      --  Read factory info.
+      Raw_Gyro_Self_Test (X) := Read_9250 (SELF_TEST_X_GYRO);
+      Raw_Gyro_Self_Test (Y) := Read_9250 (SELF_TEST_Y_GYRO);
+      Raw_Gyro_Self_Test (Z) := Read_9250 (SELF_TEST_Z_GYRO);
+      for J in Raw_Gyro_Self_Test'Range loop
+         Gyro_Factory (J) :=
+           Float (MPU9250_ST_TB (Integer (Raw_Gyro_Self_Test (J))));
+      end loop;
+      Raw_Accel_Self_Test (X) := Read_9250 (SELF_TEST_X_ACCEL);
+      Raw_Accel_Self_Test (Y) := Read_9250 (SELF_TEST_Y_ACCEL);
+      Raw_Accel_Self_Test (Z) := Read_9250 (SELF_TEST_Z_ACCEL);
+      for J in Coordinate loop
+         Accel_Factory (J) :=
+           Float (MPU9250_ST_TB (Integer (Raw_Accel_Self_Test (J))));
+      end loop;
+      New_Line;
+      New_Line;
+      Put ("gsf: ");
+      for J in Coordinate loop
+         Put (Integer (Gyro_Factory (J))'Img & " ");
+      end loop;
+      New_Line;
+      Put ("asf: ");
+      for J in Coordinate loop
+         Put (Integer (Accel_Factory (J))'Img & " ");
+      end loop;
+      New_Line;
+      New_Line;
+
+      --  Get normal readings
+      --  Sample rate divider 0 means that the data rates selected
+      --  below are unchanged.
+      Write_9250 (SMPLRT_DIV, 0);
+      --  Set DLPF for gyro/temp
+      Write_9250 (CONFIG,
+                  Convert (Configuration'(DLPF_CFG => Hz_92, others => <>)));
+      Write_9250 (GYRO_CONFIG,
+                  Convert (Gyro_Configuration'(F_CHOICE_B => 0,
+                                               GYRO_FS_SEL => Dps_250,
+                                               others => <>)));
+      Write_9250 (ACCEL_CONFIG,
+                  Convert (Accel_Configuration'(ACCEL_FS_SEL => G_2,
+                                                others => <>)));
+      Write_9250 (ACCEL_CONFIG_2,
+                  Convert (Accel_Configuration_2'(ACCEL_FCHOICE_B => 0,
+                                                  A_DLPFCFG => Hz_99,
+                                                  others => <>)));
+      Delay_For (25);
+      declare
+         Tmp : MPU9250_Components;
+      begin
+         for J in 1 .. 200 loop
+            Read_MPU9250_Components (GYRO_XOUT_H, Tmp);
+            for J in Coordinate loop
+               Gyro_Unmodified (J) := Gyro_Unmodified (J) + Tmp (J);
+            end loop;
+            Read_MPU9250_Components (ACCEL_XOUT_H, Tmp);
+            for J in Coordinate loop
+               Accel_Unmodified (J) := Accel_Unmodified (J) + Tmp (J);
+            end loop;
+            Delay_For (1);
+         end loop;
+      end;
+
+      --  Get self-test readings
+      Write_9250 (GYRO_CONFIG,
+                  Convert (Gyro_Configuration'(XGYRO_CTEN => 1,
+                                               YGYRO_CTEN => 1,
+                                               ZGYRO_CTEN => 1,
+                                               others => <>)));
+      Write_9250 (ACCEL_CONFIG,
+                  Convert (Accel_Configuration'(AX_ST_EN => 1,
+                                                AY_ST_EN => 1,
+                                                AZ_ST_EN => 1,
+                                                others => <>)));
+      Delay_For (25);
+      declare
+         Tmp : MPU9250_Components;
+      begin
+         for J in 1 .. 200 loop
+            Read_MPU9250_Components (GYRO_XOUT_H, Tmp);
+            for J in Coordinate loop
+               Gyro_Self_Test (J) := Gyro_Self_Test (J) + Tmp (J);
+            end loop;
+            Read_MPU9250_Components (ACCEL_XOUT_H, Tmp);
+            for J in Coordinate loop
+               Accel_Self_Test (J) := Accel_Self_Test (J) + Tmp (J);
+            end loop;
+            Delay_For (1);
+         end loop;
+      end;
+
+      --  Leave self-test
+      Write_9250 (GYRO_CONFIG,
+                  Convert (Gyro_Configuration'(others => <>)));
+      Write_9250 (ACCEL_CONFIG,
+                  Convert (Accel_Configuration'(others => <>)));
+      Delay_For (25);
+
+      --  Form averages
+      for J in Coordinate loop
+         Gyro_Unmodified (J) := Gyro_Unmodified (J) / 200.0;
+         Accel_Unmodified (J) := Accel_Unmodified (J) / 200.0;
+         Gyro_Self_Test (J) := Gyro_Self_Test (J) / 200.0;
+         Accel_Self_Test (J) := Accel_Self_Test (J) / 200.0;
+      end loop;
+
+      Put ("guf: ");
+      for J in Coordinate loop
+         Put (Integer (Gyro_Unmodified (J))'Img & " ");
+      end loop;
+      New_Line;
+      Put ("gmf: ");
+      for J in Coordinate loop
+         Put (Integer (Gyro_Self_Test (J))'Img & " ");
+      end loop;
+      New_Line;
+      Put ("auf: ");
+      for J in Coordinate loop
+         Put (Integer (Accel_Unmodified (J))'Img & " ");
+      end loop;
+      New_Line;
+      Put ("amf: ");
+      for J in Coordinate loop
+         Put (Integer (Accel_Self_Test (J))'Img & " ");
+      end loop;
+      New_Line;
+      New_Line;
+      Put ("gmf-guf: ");
+      for J in Coordinate loop
+         Put (Integer (Gyro_Self_Test (J) - Gyro_Unmodified (J))'Img & " ");
+      end loop;
+      New_Line;
+      Put ("amf-auf: ");
+      for J in Coordinate loop
+         Put (Integer (Accel_Self_Test (J) - Accel_Unmodified (J))'Img & " ");
+      end loop;
+      New_Line;
+      New_Line;
+
+      Put ("g%: ");
+      for J in Coordinate loop
+         declare
+            Tmp : Float;
+         begin
+            Tmp := Gyro_Self_Test (J) - Gyro_Unmodified (J);
+            Tmp := Tmp / Gyro_Factory (J) - 1.0;
+            Put (Integer (Tmp * 100.0)'Img & " ");
+         end;
+      end loop;
+      New_Line;
+      Put ("a%: ");
+      for J in Coordinate loop
+         declare
+            Tmp : Float;
+         begin
+            Tmp := Accel_Self_Test (J) - Accel_Unmodified (J);
+            Tmp := Tmp / Accel_Factory (J) - 1.0;
+            Put (Integer (Tmp * 100.0)'Img & " ");
+         end;
+      end loop;
+      New_Line;
+      New_Line;
+   end Self_Test_9250;
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
    is
@@ -252,11 +463,16 @@ is
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
-      Delay_For (10);
+      Delay_For (100);
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Fuse_ROM_Access,
                                         others => <>)));
       Read_AK8963 (ASAX, Raw);
+      Put ("mrawcal:");
+      for R in Raw'Range loop
+         Put (Raw (R)'Img & " ");
+      end loop;
+      New_Line;
       for C in Coordinate'Range loop
          Calibrations (C) :=
            (Float (Raw (Coordinate'Pos (C))) - 128.0) / 256.0 + 1.0;
@@ -267,15 +483,16 @@ is
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
-      Delay_For (10);
+      Delay_For (100);
    end Calibrate_AK8963;
 
-   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
-                               OK : out Boolean)
+   procedure Self_Test_AK8963 (Ok : out Boolean)
    is
+      Unity_Calibrations : constant AK8963_Calibrations := (others => 1.0);
       Components : AK8963_Components := (others => 0.0);
       use MPU9250_Registers;
    begin
+      Ok := False;
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
@@ -286,10 +503,15 @@ is
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Self_Test,
                                         others => <>)));
-      loop
-         exit when Status_1'(Convert (Read_AK8963 (ST1))).DRDY /= 0;
+
+      Put ("waiting for mag self-test ready ");
+      while Status_1'(Convert (Read_AK8963 (ST1))).DRDY = 0 loop
+         Put (".");
+         Delay_For (2);
       end loop;
-      Read_AK8963_Components (Calibrations, Components);
+      New_Line;
+
+      Read_AK8963_Components (Unity_Calibrations, Components);
       Put ("stmx: " & Integer (Components (X))'Img);
       Put (" stmy: " & Integer (Components (Y))'Img);
       Put (" stmz: " & Integer (Components (Z))'Img);
@@ -303,6 +525,18 @@ is
       Delay_For (10);
    end Self_Test_AK8963;
 
+   procedure Read_MPU9250_Components
+     (From_Register : MPU9250_Registers.MPU9250_Register;
+      Components : out MPU9250_Components)
+   is
+      Raw : SPI.Byte_Array (1 .. 6);
+   begin
+      Read_9250 (From_Register, Raw);
+      Components (X) := Float (To_Integer (Lo => Raw (1), Hi => Raw (2)));
+      Components (Y) := Float (To_Integer (Lo => Raw (3), Hi => Raw (4)));
+      Components (Z) := Float (To_Integer (Lo => Raw (5), Hi => Raw (6)));
+   end Read_MPU9250_Components;
+
    procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
                                      Components : out AK8963_Components)
    is
@@ -313,15 +547,20 @@ is
       Raw : array (Coordinate) of Integer;
    begin
       Read_AK8963 (HXL, XYZ);
-      Raw (X) := To_Integer (Lo => XYZ (HXL),
-                             Hi => XYZ (HXH));
-      Raw (Y) := To_Integer (Lo => XYZ (HYL),
-                             Hi => XYZ (HYH));
-      Raw (Z) := To_Integer (Lo => XYZ (HZL),
-                             Hi => XYZ (HZH));
-      for Axis in Coordinate'Range loop
-         Components (Axis) := Float (Raw (Axis)) * Calibrations (Axis);
-      end loop;
+      if Status_2'(Convert (XYZ (ST2))).HOFL = 0 then
+         Raw (X) := To_Integer (Lo => XYZ (HXL),
+                                Hi => XYZ (HXH));
+         Raw (Y) := To_Integer (Lo => XYZ (HYL),
+                                Hi => XYZ (HYH));
+         Raw (Z) := To_Integer (Lo => XYZ (HZL),
+                                Hi => XYZ (HZH));
+         for Axis in Coordinate'Range loop
+            Components (Axis) := Float (Raw (Axis)) * Calibrations (Axis);
+         end loop;
+      else
+         Put_Line ("AK8963 overflow");
+         Components := (others => 0.0);
+      end if;
    end Read_AK8963_Components;
 
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
@@ -357,6 +596,15 @@ is
                    1 => Byte));
    end Write_9250;
 
+   --  Allow 25 us per byte transferred over the internal I2C. Note
+   --  there is always one control byte sent first.
+   I2C_Time_Per_Byte : constant Duration := 0.000_025;
+   --  We seem to need a bit more.
+   I2C_Additional_Delay : constant Duration := 0.000_500;
+
+   --  Disable the internal I2C after the transfer is (should have
+   --  been) complete.
+
    function Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register)
                         return Interfaces.Unsigned_8
    is
@@ -379,10 +627,12 @@ is
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
                                               I2C_SLV_LENG => Bytes'Length,
                                               others => <>)));
-      --  At least 3 bytes to transfer at ~350 kHz, 70 us
-      Nanosleep.Sleep (Nanosleep.To_Interval (0.000_070));
-      Read_9250 (EXT_SENS_DATA,
-                 Bytes);
+      Nanosleep.Sleep
+        (I2C_Time_Per_Byte * (Bytes'Length + 1) + I2C_Additional_Delay);
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
+                                              others => <>)));
+      Read_9250 (EXT_SENS_DATA, Bytes);
    end Read_AK8963;
 
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
@@ -390,10 +640,6 @@ is
    is
       use MPU9250_Registers;
    begin
-      --  Put_Line ("Write_AK8963: To_Register :"
-      --              & Integer'Image (Integer (To_Register))
-      --              & ", Byte"
-      --              & Integer'Image (Integer (Byte)));
       Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 0,
                                               I2C_ID => AK8963_ID)));
@@ -402,6 +648,10 @@ is
       Write_9250 (I2C_SLV0_CTRL,
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
                                               I2C_SLV_LENG => 1,
+                                              others => <>)));
+      Nanosleep.Sleep (I2C_Time_Per_Byte * 2 + I2C_Additional_Delay);
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
                                               others => <>)));
    end Write_AK8963;
 
