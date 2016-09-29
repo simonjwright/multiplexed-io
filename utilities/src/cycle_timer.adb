@@ -31,6 +31,7 @@ is
 
    function Clock return Cycles
    is
+      pragma SPARK_Mode (Off);
       Result : constant Cycles := DWT_CYCCNT;
    begin
       return Result;

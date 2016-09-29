@@ -9,9 +9,6 @@ package body Nanosleep with SPARK_Mode is
    Clock_Frequency : constant := 168_000_000;
    --  STM32F42xxx without over-drive.
 
-   function To_Interval (Period : Sleepable) return Interval
-     is (Interval (Period * Clock_Frequency));
-
    DEMCR : Interfaces.Unsigned_32
      with
        Import,
@@ -32,6 +29,21 @@ package body Nanosleep with SPARK_Mode is
        Convention => Ada,
        Volatile,
        Address => System'To_Address (16#E000_1004#);
+
+   function To_Interval (Period : Sleepable) return Interval
+     is (Interval (Period * Clock_Frequency));
+
+   procedure Sleep (Period : Sleepable) is
+      Start : constant Interval := DWT_CYCCNT;
+      Current : Interval;
+      Period_As_Interval : constant Interval := To_Interval (Period);
+      --  do this last
+   begin
+      loop
+         Current := DWT_CYCCNT;
+         exit when Current - Start > Period_As_Interval;
+      end loop;
+   end Sleep;
 
    procedure Sleep (Period : Interval) is
       Start : constant Interval := DWT_CYCCNT;

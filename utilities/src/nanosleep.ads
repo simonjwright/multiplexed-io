@@ -9,13 +9,16 @@ with Interfaces;
 
 package Nanosleep with SPARK_Mode is
 
-   type Interval is private;
-
    subtype Sleepable is Duration range 0.0 .. 0.001;
    --  This is to avoid busy-waiting for ridiculously long periods;
    --  even a millisecond seems rather long!
 
-   function To_Interval (Period : Sleepable) return Interval;
+   procedure Sleep (Period : Sleepable) with Inline_Always;
+
+   type Interval is private;
+
+   function To_Interval (Period : Sleepable) return Interval
+   with Inline_Always;
 
    --  Loop for the given number of processor cycles.
    procedure Sleep (Period : Interval) with Inline_Always;
