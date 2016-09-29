@@ -13,20 +13,20 @@
 
 all::
 
-SOURCES = src/i2c1.ads src/i2c1.adb
+SOURCES = src/i2c1-device.ads src/i2c1-device.adb
 DEFINITION = src/i2c1.def
 
 sources: $(SOURCES)
 
-src/i2c1.ads: ../i2c/src/i2c.ads.pp $(DEFINITION)
+src/i2c1-device.ads: ../i2c/src/i2c-device.ads.pp $(DEFINITION)
 	gnatprep				\
-	  -c -r -v				\
+	  -c -v				\
 	  $<					\
 	  $@					\
 	  $(DEFINITION)
-src/i2c1.adb: ../i2c/src/i2c.adb.pp $(DEFINITION)
+src/i2c1-device.adb: ../i2c/src/i2c-device.adb.pp $(DEFINITION)
 	gnatprep				\
-	  -c -r -v				\
+	  -c -v				\
 	  $<					\
 	  $@					\
 	  $(DEFINITION)
