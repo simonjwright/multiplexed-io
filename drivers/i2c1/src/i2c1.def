@@ -3,9 +3,10 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 --  Used in ../Makefile by gnatprep to convert the parameterised
---  i2c.ad[bs].pp into Ada source for i2c1.ad[bs].
+--  i2c-device.ad[bs].pp into Ada source for i2c1.ad[bs].
 
 I2C        := I2C1
+NAME       := "I2C1"
 
 SCL_Enable := GPIOBEN
 SCL_GPIO   := GPIO.GPIOB_Periph

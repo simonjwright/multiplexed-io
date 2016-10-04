@@ -1,0 +1,29 @@
+--  Demonstration code for the AdaPilot project
+--  (http://adapilot.likeabird.eu).
+--  Copyright (C) 2016 Simon Wright <simon@pushface.org>
+
+--------------------------------------------------------------------
+--  This is the project file for building the pcf8574a
+--  demonstrator (the executable will be pcf8574a-adaracer or
+--  pcf8574a-stm32f4 depending on the scenario variable RTS,
+--  default adaracer).
+--
+--  DO NOT CALL DIRECTLY: it is to be called up via the main project
+--  file pcf8574a_build.gpr.
+--------------------------------------------------------------------
+
+with "../drivers/i2c/i2c.gpr";
+with "../drivers/i2c1/i2c1.gpr";
+
+project PCF8574A extends "../environment.gpr" is
+
+   for Main use ("pcf8574a.adb");
+   for Exec_Dir use ".";
+   for Object_Dir use ".build-pcf8574a-" & RTS;
+   for Source_Dirs use ("src");
+
+   package Builder is
+      for Executable ("pcf8574a.adb") use "pcf8574a-" & RTS;
+   end Builder;
+
+end PCF8574A;

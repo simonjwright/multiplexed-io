@@ -2,6 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+with "../i2c/i2c.gpr";
 with "../../utilities/utilities.gpr";
 with "stm32_svd.gpr";
 

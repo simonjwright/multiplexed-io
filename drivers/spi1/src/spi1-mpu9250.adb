@@ -7,9 +7,12 @@ with Ada.Unchecked_Conversion;
 with Interfaces;
 with System;
 
-with SPI;
-with SPI1.Internal;
-pragma Elaborate_All (SPI1.Internal);
+with I2C1;
+with I2C1.Internal;
+pragma Elaborate_All (I2C1.Internal);
+--  with SPI;
+--  with SPI1.Internal;
+--  pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
 with Nanosleep;
@@ -51,7 +54,7 @@ is
                       return Interfaces.Unsigned_8;
 
    procedure Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register;
-                        Bytes : out SPI.Byte_Array);
+                        Bytes : out I2C1.Byte_Array);
 
    procedure Write_9250 (To_Register : MPU9250_Registers.MPU9250_Register;
                          Byte        : Interfaces.Unsigned_8);
@@ -60,7 +63,7 @@ is
                         return Interfaces.Unsigned_8;
 
    procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
-                          Bytes : out SPI.Byte_Array);
+                          Bytes : out I2C1.Byte_Array);
 
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
                            Byte :  Interfaces.Unsigned_8);
@@ -136,18 +139,29 @@ is
 
       --  I2C (AK8963) setup
 
-      --  Enable I2C master, disable I2C slave (we must be in SPI mode)
-      --  XXX should turn off I2C slave nearer the start?
+      --  --  Enable I2C master, disable I2C slave (we must be in SPI mode)
+      --  --  XXX should turn off I2C slave nearer the start?
+      --  Write_9250 (USER_CTRL,
+      --              Convert (User_Control'(I2C_MST_EN => 1,
+      --                                     --  I2C_IF_DIS => 1,
+      --                                     others => <>)));
+
+      --  Disable I2C Master, leave Slave enabled.
       Write_9250 (USER_CTRL,
-                  Convert (User_Control'(I2C_MST_EN => 1,
-                                         I2C_IF_DIS => 1,
+                  Convert (User_Control'(I2C_MST_EN => 0,
+                                         I2C_IF_DIS => 0,
                                          others => <>)));
 
-      --  Set I2C clock. K_348 is the "default" (i.e. the one with
-      --  Enum_Rep = 0).
-      Write_9250 (I2C_MST_CTRL,
-                  Convert (I2C_Master_Control'(I2C_MST_CLK => K_348,
-                                               others => <>)));
+      --  Let the STM32F4 see the AK8963
+      Write_9250 (INT_PIN_CFG,
+                  Convert (Int_Pin_Bypass_Enable'(BYPASS_EN => 1,
+                                                  others => <>)));
+
+      --  --  Set I2C clock. K_348 is the "default" (i.e. the one with
+      --  --  Enum_Rep = 0).
+      --  Write_9250 (I2C_MST_CTRL,
+      --              Convert (I2C_Master_Control'(I2C_MST_CLK => K_348,
+      --                                           others => <>)));
       --  wait a bit
       Delay_For (100);
 
@@ -183,7 +197,7 @@ is
          MPU9250_Device_Identified := Read_9250 (WHOAMI) = 16#71#;
 
          declare
-            ATG : SPI.Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
+            ATG : I2C1.Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
          begin
             Read_9250 (ACCEL_XOUT_H, ATG);
             Put ("ax: "
@@ -335,7 +349,7 @@ is
                   Convert (Accel_Configuration_2'(ACCEL_FCHOICE_B => 0,
                                                   A_DLPFCFG => Hz_99,
                                                   others => <>)));
-      Delay_For (25);
+      Delay_For (100);
       declare
          Tmp : MPU9250_Components;
       begin
@@ -363,7 +377,7 @@ is
                                                 AY_ST_EN => 1,
                                                 AZ_ST_EN => 1,
                                                 others => <>)));
-      Delay_For (25);
+      Delay_For (100);
       declare
          Tmp : MPU9250_Components;
       begin
@@ -385,7 +399,7 @@ is
                   Convert (Gyro_Configuration'(others => <>)));
       Write_9250 (ACCEL_CONFIG,
                   Convert (Accel_Configuration'(others => <>)));
-      Delay_For (25);
+      Delay_For (100);
 
       --  Form averages
       for J in Coordinate loop
@@ -455,7 +469,7 @@ is
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
    is
-      Raw : SPI.Byte_Array (0 .. 2) := (others => 0);
+      Raw : I2C1.Byte_Array (0 .. 2) := (others => 0);
       Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
       --  for 16-bit resolution
       use MPU9250_Registers;
@@ -529,7 +543,7 @@ is
      (From_Register : MPU9250_Registers.MPU9250_Register;
       Components : out MPU9250_Components)
    is
-      Raw : SPI.Byte_Array (1 .. 6);
+      Raw : I2C1.Byte_Array (1 .. 6);
    begin
       Read_9250 (From_Register, Raw);
       Components (X) := Float (To_Integer (Lo => Raw (1), Hi => Raw (2)));
@@ -543,7 +557,7 @@ is
       use MPU9250_Registers;
       --  Measurements from the AK8963; we must read ST2 to ready for
       --  next cycle.
-      XYZ : SPI.Byte_Array (HXL .. ST2) := (others => 0);
+      XYZ : I2C1.Byte_Array (HXL .. ST2) := (others => 0);
       Raw : array (Coordinate) of Integer;
    begin
       Read_AK8963 (HXL, XYZ);
@@ -566,23 +580,29 @@ is
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8
    is
-      Bytes : SPI.Byte_Array (1 .. 1);
+      Result : Interfaces.Unsigned_8;
       use type Interfaces.Unsigned_8;
    begin
-      Internal.Command_SPI (Internal.MPU9250,
-                            Command => (0 => 16#80# or From_Register),
-                            Result => Bytes);
-      return Bytes (1);
+      I2C1.Internal.Write_I2C (I2C1.Internal.MPU9250,
+                               (0 => 16#80# or From_Register));
+      I2C1.Internal.Read_I2C (I2C1.Internal.MPU9250, Result);
+      return Result;
    end Read_9250;
 
    procedure Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register;
-                        Bytes : out SPI.Byte_Array)
+                        Bytes : out I2C1.Byte_Array)
    is
+      --  Implemented this way because reading multiple bytes isn't
+      --  handled yet.
+      Register : MPU9250_Registers.MPU9250_Register := From_Register;
       use type Interfaces.Unsigned_8;
    begin
-      Internal.Command_SPI (Internal.MPU9250,
-                            Command => (0 => 16#80# or From_Register),
-                            Result => Bytes);
+      for J in Bytes'Range loop
+         Bytes (J) := Read_9250 (Register);
+         if Register /= MPU9250_Registers.MPU9250_Register'Last then
+            Register := Register + 1;
+         end if;
+      end loop;
    end Read_9250;
 
    procedure Write_9250 (To_Register : MPU9250_Registers.MPU9250_Register;
@@ -590,10 +610,8 @@ is
    is
       use type Interfaces.Unsigned_8;
    begin
-      Internal.Write_SPI
-        (Internal.MPU9250,
-         Bytes => (0 => 16#00# or To_Register,
-                   1 => Byte));
+      I2C1.Internal.Write_I2C (I2C1.Internal.MPU9250, (0 => To_Register,
+                                                       1 => Byte));
    end Write_9250;
 
    --  Allow 25 us per byte transferred over the internal I2C. Note
@@ -608,31 +626,19 @@ is
    function Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register)
                         return Interfaces.Unsigned_8
    is
-      Bytes : SPI.Byte_Array (1 .. 1);
+      Data : Interfaces.Unsigned_8;
    begin
-      Read_AK8963 (From_Register, Bytes);
-      return Bytes (1);
+      I2C1.Internal.Write_I2C (I2C1.Internal.AK8963, From_Register);
+      I2C1.Internal.Read_I2C (I2C1.Internal.AK8963, Data);
+      return Data;
    end Read_AK8963;
 
    procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
-                          Bytes : out SPI.Byte_Array)
+                          Bytes : out I2C1.Byte_Array)
    is
-      use MPU9250_Registers;
    begin
-      Write_9250 (I2C_SLV0_ADDR,
-                  Convert (I2C_Slave_Address'(I2C_SLV_RNW => 1,
-                                              I2C_ID => AK8963_ID)));
-      Write_9250 (I2C_SLV0_REG, From_Register);
-      Write_9250 (I2C_SLV0_CTRL,
-                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
-                                              I2C_SLV_LENG => Bytes'Length,
-                                              others => <>)));
-      Nanosleep.Sleep
-        (I2C_Time_Per_Byte * (Bytes'Length + 1) + I2C_Additional_Delay);
-      Write_9250 (I2C_SLV0_CTRL,
-                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
-                                              others => <>)));
-      Read_9250 (EXT_SENS_DATA, Bytes);
+      I2C1.Internal.Write_I2C (I2C1.Internal.AK8963, From_Register);
+      I2C1.Internal.Read_I2C (I2C1.Internal.AK8963, Bytes);
    end Read_AK8963;
 
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
@@ -640,19 +646,8 @@ is
    is
       use MPU9250_Registers;
    begin
-      Write_9250 (I2C_SLV0_ADDR,
-                  Convert (I2C_Slave_Address'(I2C_SLV_RNW => 0,
-                                              I2C_ID => AK8963_ID)));
-      Write_9250 (I2C_SLV0_REG, To_Register);
-      Write_9250 (I2C_SLV0_DO, Byte);
-      Write_9250 (I2C_SLV0_CTRL,
-                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
-                                              I2C_SLV_LENG => 1,
-                                              others => <>)));
-      Nanosleep.Sleep (I2C_Time_Per_Byte * 2 + I2C_Additional_Delay);
-      Write_9250 (I2C_SLV0_CTRL,
-                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
-                                              others => <>)));
+      I2C1.Internal.Write_I2C (I2C1.Internal.AK8963, (0 => To_Register,
+                                                      1 => Byte));
    end Write_AK8963;
 
    function To_Integer

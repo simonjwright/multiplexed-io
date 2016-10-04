@@ -292,10 +292,10 @@ is
    I2C_SLV4_DO : constant := 51;
 
    type I2C_Slave4_Control is record
-      I2C_SLV4_EN : Bit;
-      SLV4_DONE_INT_EN : Bit;
-      I2C_SLV4_REG_DIS : Bit;
-      I2C_MST_DLY : Bits_4;
+      I2C_SLV4_EN : Bit := 0;
+      SLV4_DONE_INT_EN : Bit := 0;
+      I2C_SLV4_REG_DIS : Bit := 0;
+      I2C_MST_DLY : Bits_4 := 0;
    end record with Size => 8;
    for I2C_Slave4_Control use record
       I2C_SLV4_EN at 0 range 7 .. 7;
@@ -311,14 +311,14 @@ is
    I2C_SLV4_DI : constant := 53;
 
    type I2C_Master_Status is record
-      PASS_THROUGH : Bit;
-      I2C_SLV4_DONE : Bit;
-      I2C_LOST_ARB : Bit;
-      I2C_SLV4_NACK : Bit;
-      I2C_SLV3_NACK : Bit;
-      I2C_SLV2_NACK : Bit;
-      I2C_SLV1_NACK : Bit;
-      I2C_SLV0_NACK : Bit;
+      PASS_THROUGH : Bit := 0;
+      I2C_SLV4_DONE : Bit := 0;
+      I2C_LOST_ARB : Bit := 0;
+      I2C_SLV4_NACK : Bit := 0;
+      I2C_SLV3_NACK : Bit := 0;
+      I2C_SLV2_NACK : Bit := 0;
+      I2C_SLV1_NACK : Bit := 0;
+      I2C_SLV0_NACK : Bit := 0;
    end record with Size => 8;
    for I2C_Master_Status use record
       PASS_THROUGH at 0 range 7 .. 7;
@@ -334,8 +334,30 @@ is
                                                      I2C_Master_Status);
    I2C_MST_STATUS : constant := 54;
 
-   --  XXX GAP  --
+   type Int_Pin_Bypass_Enable is record
+      ACTL : Bit := 0;
+      OPEN : Bit := 0;
+      LATCH_INT_EN : Bit := 0;
+      INT_ANYRD_2CLEAR : Bit := 0;
+      ACTL_FSYNC : Bit := 0;
+      FSYNC_INT_MODE_EN : Bit := 0;
+      BYPASS_EN : Bit := 0;
+      Reserved_0_0 : Bit := 0;
+   end record with Size => 8;
+   for Int_Pin_Bypass_Enable use record
+      ACTL at 0 range 7 .. 7;
+      OPEN at 0 range 6 .. 6;
+      LATCH_INT_EN at 0 range 5 .. 5;
+      INT_ANYRD_2CLEAR at 0 range 4 .. 4;
+      ACTL_FSYNC at 0 range 3 .. 3;
+      FSYNC_INT_MODE_EN at 0 range 2 .. 2;
+      BYPASS_EN at 0 range 1 .. 1;
+      Reserved_0_0 at 0 range 0 .. 0;
+   end record;
+   function Convert is new Ada.Unchecked_Conversion (Int_Pin_Bypass_Enable,
+                                                     Interfaces.Unsigned_8);
    INT_PIN_CFG : constant := 55;
+
    INT_ENABLE : constant := 56;
    INT_STATUS : constant := 58;
 
@@ -439,8 +461,8 @@ is
    subtype Accelerometer_Offset_High is Interfaces.Integer_8;
    type Accelerometer_Lower_Offset is mod 2 ** 7 with Size => 7;
    type Accelerometer_Offset_Low is record
-      XA_OFFS : Accelerometer_Lower_Offset;
-      Reserved_0_0 : Bit;
+      XA_OFFS : Accelerometer_Lower_Offset := 0;
+      Reserved_0_0 : Bit := 0;
    end record with Size => 8;
    for Accelerometer_Offset_Low use record
       XA_OFFS at 0 range 1 .. 7;
@@ -520,7 +542,7 @@ is
    type Control_1 is record
       Reserved_5_7 : Bits_3 := 0;
       BITS : Bit := 0;
-      MODE : Operation_Mode_Setting;
+      MODE : Operation_Mode_Setting := Power_Down;
    end record with Size => 8;
    for Control_1 use record
       Reserved_5_7 at 0 range 5 .. 7;

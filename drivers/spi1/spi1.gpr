@@ -3,6 +3,7 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with "stm32_svd.gpr";
+with "../i2c1/i2c1.gpr";
 with "../spi/spi.gpr";
 with "../../utilities/utilities.gpr";
 
