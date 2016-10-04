@@ -37,7 +37,8 @@ is
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations);
    --  Includes magnetometer scaling. Leaves device powered down.
 
-   procedure Self_Test_AK8963 (Ok : out Boolean);
+   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
+                               Ok : out Boolean);
    --  Leaves device powered down.
 
    procedure Read_MPU9250_Components
@@ -169,7 +170,7 @@ is
       Delay_For (100);
 
       Calibrate_AK8963 (Magnetometer_Calibrations);
-      Self_Test_AK8963 (AK8963_Ok);
+      Self_Test_AK8963 (Magnetometer_Calibrations, AK8963_Ok);
 
       --  Kick off magnetometer measurements (100 Hz)
       Write_AK8963 (CNTL1,
@@ -286,8 +287,6 @@ is
             30903, 31212, 31524, 31839, 32157, 32479, 32804, 33132
            );
    begin
-      Ok := False;
-
       --  Read factory info.
       Raw_Gyro_Self_Test (X) := Read_9250 (SELF_TEST_X_GYRO);
       Raw_Gyro_Self_Test (Y) := Read_9250 (SELF_TEST_Y_GYRO);
@@ -451,6 +450,25 @@ is
       end loop;
       New_Line;
       New_Line;
+
+      --  evaluate pass/fail
+      Ok := True;
+      for J in Coordinate loop
+         if abs ((Gyro_Self_Test (J)
+                    - Gyro_Unmodified (J)
+                    - Gyro_Factory (J))
+                   / Gyro_Factory (J)) > 0.14
+         then
+            Ok := False;
+         end if;
+         if abs ((Accel_Self_Test (J)
+                    - Accel_Unmodified (J)
+                    - Accel_Factory (J))
+                   / Accel_Factory (J)) > 0.14
+         then
+            Ok := False;
+         end if;
+      end loop;
    end Self_Test_9250;
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
@@ -486,13 +504,12 @@ is
       Delay_For (100);
    end Calibrate_AK8963;
 
-   procedure Self_Test_AK8963 (Ok : out Boolean)
+   procedure Self_Test_AK8963 (Calibrations : AK8963_Calibrations;
+                               Ok : out Boolean)
    is
-      Unity_Calibrations : constant AK8963_Calibrations := (others => 1.0);
       Components : AK8963_Components := (others => 0.0);
       use MPU9250_Registers;
    begin
-      Ok := False;
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
@@ -511,7 +528,12 @@ is
       end loop;
       New_Line;
 
-      Read_AK8963_Components (Unity_Calibrations, Components);
+      Read_AK8963_Components (Calibrations, Components);
+
+      Ok := Components (X) in -200.0 .. 200.0
+        and Components (Y) in -200.0 .. 200.0
+        and Components (Z) in -3200.0 .. -800.0;
+
       Put ("stmx: " & Integer (Components (X))'Img);
       Put (" stmy: " & Integer (Components (Y))'Img);
       Put (" stmz: " & Integer (Components (Z))'Img);
@@ -532,9 +554,9 @@ is
       Raw : SPI.Byte_Array (1 .. 6);
    begin
       Read_9250 (From_Register, Raw);
-      Components (X) := Float (To_Integer (Lo => Raw (1), Hi => Raw (2)));
-      Components (Y) := Float (To_Integer (Lo => Raw (3), Hi => Raw (4)));
-      Components (Z) := Float (To_Integer (Lo => Raw (5), Hi => Raw (6)));
+      Components (X) := Float (To_Integer (Lo => Raw (2), Hi => Raw (1)));
+      Components (Y) := Float (To_Integer (Lo => Raw (4), Hi => Raw (3)));
+      Components (Z) := Float (To_Integer (Lo => Raw (6), Hi => Raw (5)));
    end Read_MPU9250_Components;
 
    procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
