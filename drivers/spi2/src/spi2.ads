@@ -2,9 +2,17 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+with Interfaces;
+
 package SPI2
 with
   SPARK_Mode,
   Pure
 is
+
+   subtype Byte is Interfaces.Unsigned_8;
+
+   type Byte_Array is array (Natural range <>) of Byte
+   with Component_Size => 8;
+
 end SPI2;

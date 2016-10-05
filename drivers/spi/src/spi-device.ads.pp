@@ -6,7 +6,12 @@
 --  spi/src/spi-device.ads.pp.  TO MAKE A PERMANENT CHANGE, EDIT THAT
 --  FILE AND REGENERATE, THEN COMMIT THE REGENERATED FILE.
 
-with SPI;
+--  $SPI translates to SPI1, SPI2 etc; the package SPIn is expected to
+--  contain declarations
+--
+--  subtype Byte is Interfaces.Unsigned_8;
+--  type Byte_Array is array (Natural range <>) of Byte
+--  with Component_Size => 8;
 
 private
 package $SPI.Device
@@ -33,16 +38,16 @@ is
    --  selection, the call, and the deselection must be called within
    --  the envelope of a protected operation.
 
-   procedure Read_SPI (Bytes : out SPI.Byte_Array)
+   procedure Read_SPI (Bytes : out Byte_Array)
    with
      Pre => Initialized;
 
-   procedure Write_SPI (Bytes : SPI.Byte_Array)
+   procedure Write_SPI (Bytes : Byte_Array)
    with
      Pre => Initialized;
 
-   procedure Command_SPI (Command    :     SPI.Byte_Array;
-                          Result     : out SPI.Byte_Array)
+   procedure Command_SPI (Command    :     Byte_Array;
+                          Result     : out Byte_Array)
    with
      Pre => Initialized;
 

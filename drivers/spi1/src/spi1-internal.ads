@@ -2,8 +2,6 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with SPI;
-
 private
 package SPI1.Internal
 with
@@ -16,8 +14,6 @@ is
    --  there is no need for mutual exclusion.
 
    type Device is (MPU9250);
-
-   subtype Byte_Array is SPI.Byte_Array;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array);
 

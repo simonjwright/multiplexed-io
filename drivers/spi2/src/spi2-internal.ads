@@ -2,8 +2,6 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-with SPI;
-
 private
 package SPI2.Internal
 with
@@ -21,8 +19,6 @@ is
      Post => Initialized;
 
    type Device is (BARO, FRAM);
-
-   subtype Byte_Array is SPI.Byte_Array;
 
    procedure Read_SPI (The_Device : Device; Bytes : out Byte_Array)
    with

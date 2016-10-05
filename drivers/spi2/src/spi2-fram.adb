@@ -39,7 +39,7 @@ is
    package body IO is
 
       subtype T_FRAM_Data
-        is Internal.Byte_Array (0 .. (T'Size + 7) / 8 - 1);
+        is Byte_Array (0 .. (T'Size + 7) / 8 - 1);
 
       function To_T
         is new Ada.Unchecked_Conversion (T_FRAM_Data, T);
@@ -50,7 +50,7 @@ is
         (From : FRAM_Index;
          V : out T)
       is
-         Demand : constant Internal.Byte_Array :=
+         Demand : constant Byte_Array :=
            (Read_Memory_Data'Enum_Rep,
             Interfaces.Unsigned_8 (From / 256),
             Interfaces.Unsigned_8 (From mod 256));
@@ -64,11 +64,10 @@ is
         (To : FRAM_Index;
          V : T)
       is
-         Demand : constant Internal.Byte_Array :=
+         Demand : constant Byte_Array :=
            (Write_Memory_Data'Enum_Rep,
             Interfaces.Unsigned_8 (To / 256),
             Interfaces.Unsigned_8 (To mod 256));
-         use type Internal.Byte_Array;
       begin
          Internal.Write_SPI (Internal.FRAM,
                              (0 => Set_Write_Enable_Latch'Enum_Rep));

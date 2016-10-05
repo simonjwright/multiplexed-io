@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-library project Utilities extends "../../environment.gpr" is
+library project Utilities extends "../environment.gpr" is
 
    for Languages use ("ada");
 

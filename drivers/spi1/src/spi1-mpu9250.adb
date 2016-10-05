@@ -7,7 +7,6 @@ with Ada.Unchecked_Conversion;
 with Interfaces;
 with System;
 
-with SPI;
 with SPI1.Internal;
 pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
@@ -52,7 +51,7 @@ is
                       return Interfaces.Unsigned_8;
 
    procedure Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register;
-                        Bytes : out SPI.Byte_Array);
+                        Bytes : out Byte_Array);
 
    procedure Write_9250 (To_Register : MPU9250_Registers.MPU9250_Register;
                          Byte        : Interfaces.Unsigned_8);
@@ -61,7 +60,7 @@ is
                         return Interfaces.Unsigned_8;
 
    procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
-                          Bytes : out SPI.Byte_Array);
+                          Bytes : out Byte_Array);
 
    procedure Write_AK8963 (To_Register : MPU9250_Registers.AK8963_Register;
                            Byte :  Interfaces.Unsigned_8);
@@ -184,7 +183,7 @@ is
          MPU9250_Device_Identified := Read_9250 (WHOAMI) = 16#71#;
 
          declare
-            ATG : SPI.Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
+            ATG : Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
          begin
             Read_9250 (ACCEL_XOUT_H, ATG);
             Put ("ax: "
@@ -473,7 +472,7 @@ is
 
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
    is
-      Raw : SPI.Byte_Array (0 .. 2) := (others => 0);
+      Raw : Byte_Array (0 .. 2) := (others => 0);
       Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
       --  for 16-bit resolution
       use MPU9250_Registers;
@@ -551,7 +550,7 @@ is
      (From_Register : MPU9250_Registers.MPU9250_Register;
       Components : out MPU9250_Components)
    is
-      Raw : SPI.Byte_Array (1 .. 6);
+      Raw : Byte_Array (1 .. 6);
    begin
       Read_9250 (From_Register, Raw);
       Components (X) := Float (To_Integer (Lo => Raw (2), Hi => Raw (1)));
@@ -565,7 +564,7 @@ is
       use MPU9250_Registers;
       --  Measurements from the AK8963; we must read ST2 to ready for
       --  next cycle.
-      XYZ : SPI.Byte_Array (HXL .. ST2) := (others => 0);
+      XYZ : Byte_Array (HXL .. ST2) := (others => 0);
       Raw : array (Coordinate) of Integer;
    begin
       Read_AK8963 (HXL, XYZ);
@@ -588,7 +587,7 @@ is
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8
    is
-      Bytes : SPI.Byte_Array (1 .. 1);
+      Bytes : Byte_Array (1 .. 1);
       use type Interfaces.Unsigned_8;
    begin
       Internal.Command_SPI (Internal.MPU9250,
@@ -598,7 +597,7 @@ is
    end Read_9250;
 
    procedure Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register;
-                        Bytes : out SPI.Byte_Array)
+                        Bytes : out Byte_Array)
    is
       use type Interfaces.Unsigned_8;
    begin
@@ -630,17 +629,21 @@ is
    function Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register)
                         return Interfaces.Unsigned_8
    is
-      Bytes : SPI.Byte_Array (1 .. 1);
+      Bytes : Byte_Array (1 .. 1);
    begin
       Read_AK8963 (From_Register, Bytes);
       return Bytes (1);
    end Read_AK8963;
 
    procedure Read_AK8963 (From_Register : MPU9250_Registers.AK8963_Register;
-                          Bytes : out SPI.Byte_Array)
+                          Bytes : out Byte_Array)
    is
       use MPU9250_Registers;
    begin
+      --  Ensure nothing's going on before changing the registers
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
+                                              others => <>)));
       Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 1,
                                               I2C_ID => AK8963_ID)));
@@ -662,6 +665,10 @@ is
    is
       use MPU9250_Registers;
    begin
+      --  Ensure nothing's going on before changing the registers
+      Write_9250 (I2C_SLV0_CTRL,
+                  Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
+                                              others => <>)));
       Write_9250 (I2C_SLV0_ADDR,
                   Convert (I2C_Slave_Address'(I2C_SLV_RNW => 0,
                                               I2C_ID => AK8963_ID)));

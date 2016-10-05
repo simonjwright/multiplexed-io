@@ -2,7 +2,7 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
-aggregate project Utilities_Build extends "../../environment.gpr" is
+aggregate project Utilities_Build extends "../environment.gpr" is
 
    case RTS is
       when "adaracer" =>

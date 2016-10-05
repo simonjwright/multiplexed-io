@@ -120,7 +120,7 @@ is
       Initialize_Done := True;
    end Initialize;
 
-   procedure Read_SPI (Bytes : out SPI.Byte_Array)
+   procedure Read_SPI (Bytes : out Byte_Array)
    with SPARK_Mode => Off
    is
       Value_Read : Short;
@@ -140,7 +140,7 @@ is
       end loop;
    end Read_SPI;
 
-   procedure Write_SPI (Bytes : SPI.Byte_Array)
+   procedure Write_SPI (Bytes : Byte_Array)
    with SPARK_Mode => Off
    is
    begin
@@ -155,8 +155,8 @@ is
       end loop;
    end Write_SPI;
 
-   procedure Command_SPI (Command    :     SPI.Byte_Array;
-                          Result     : out SPI.Byte_Array)
+   procedure Command_SPI (Command    :     Byte_Array;
+                          Result     : out Byte_Array)
    with SPARK_Mode => Off
    is
       Value_Read : Short;

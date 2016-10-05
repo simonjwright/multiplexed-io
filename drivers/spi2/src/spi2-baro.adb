@@ -65,13 +65,13 @@ is
    subtype Coefficient is Float range 0.0 .. 2.0 ** 16 - 1.0;
    Coefficients : array (Coefficient_Index) of Coefficient := (others => 0.0);
 
-   function CRC4 (Bytes : Internal.Byte_Array) return Interfaces.Unsigned_8;
+   function CRC4 (Bytes : Byte_Array) return Interfaces.Unsigned_8;
 
    task BARO_Reader;
    pragma Annotate
      (Gnatprove,
         Intentional,
-        """spi2.internal.initialize_done"" might not be initialized",
+        """spi2.initialize_done"" might not be initialized",
         "initialized via Elaborate_All");
    --  The above pragma Annotate has no effect.
 
@@ -83,7 +83,7 @@ is
      is (Command'Enum_Rep)
    with SPARK_Mode => Off;
 
-   function CRC4 (Bytes : Internal.Byte_Array) return Interfaces.Unsigned_8 is
+   function CRC4 (Bytes : Byte_Array) return Interfaces.Unsigned_8 is
       CRC : Interfaces.Unsigned_16;
       use type Interfaces.Unsigned_16;
    begin
@@ -105,7 +105,7 @@ is
    end CRC4;
 
    procedure Initialize is
-      Raw_Coefficients : Internal.Byte_Array (0 .. 15);
+      Raw_Coefficients : Byte_Array (0 .. 15);
       Start_Time : Ada.Real_Time.Time;
       use type Ada.Real_Time.Time;
       use type Interfaces.Unsigned_8;
@@ -156,7 +156,7 @@ is
    end Initialize;
 
    task body BARO_Reader is
-      Raw : Internal.Byte_Array (0 .. 2);
+      Raw : Byte_Array (0 .. 2);
 
       subtype Digital_Temperature is Float range 0.0 .. 2.0 ** 24 - 1.0;
       subtype Temperature_Difference is Float range -16776960.0 .. 16777216.0;

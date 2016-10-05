@@ -3,7 +3,6 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with Ada.Unchecked_Conversion;
-with SPI;
 with Interfaces;
 
 package SPI1.MPU9250_Registers
@@ -381,7 +380,7 @@ is
    GYRO_ZOUT_H : constant := 71;
    GYRO_ZOUT_L : constant := 72;
 
-   subtype External_Sensor_Data is SPI.Byte_Array (0 .. 23);
+   subtype External_Sensor_Data is Byte_Array (0 .. 23);
    EXT_SENS_DATA : constant := 73;
 
    subtype I2C_Data_Out is Interfaces.Unsigned_8;
@@ -485,7 +484,7 @@ is
 
    subtype AK8963_Register is Interfaces.Unsigned_8 range 0 .. 18;
 
-   subtype Raw_Magnetometer_Registers is SPI.Byte_Array (0 .. 18);
+   subtype Raw_Magnetometer_Registers is Byte_Array (0 .. 18);
 
    subtype Device_ID is Interfaces.Unsigned_8;
 

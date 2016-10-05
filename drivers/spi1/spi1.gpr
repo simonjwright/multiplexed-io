@@ -3,7 +3,6 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with "stm32_svd.gpr";
-with "../spi/spi.gpr";
 with "../../utilities/utilities.gpr";
 
 library project SPI1 extends "../../environment.gpr" is
