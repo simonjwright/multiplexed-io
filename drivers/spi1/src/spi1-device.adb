@@ -83,7 +83,7 @@ is
       --  Enable $SPI
       RCC.RCC_Periph.APB2ENR.SPI1EN := 1;
 
-      --  Configure SPI
+      --  Configure SPI: first, determine & set bus rate
       declare
          Bus_Clock : constant Natural
            := Natural (System_Clocks.PCLK2);
@@ -100,18 +100,36 @@ is
          end loop;
 
          STM32_SVD.SPI.SPI1_Periph.CR1 :=
-           (             -- XXX fill in the others!
-            MSTR   => 1,
-            BR     => BR_Setting,
-            SSI    => 1, -- software NSS
-            SSM    => 1, -- software NSS
-            CPOL   => 0, -- mode 0
-            CPHA   => 0,
-            others => <>);
+           (BIDIMODE => 0,
+            BIDIOE   => 0,
+            CRCEN    => 0,
+            CRCNEXT  => 0,
+            DFF      => 0,
+            RXONLY   => 0,
+            SSM      => 1, -- don't understand this
+            SSI      => 1, -- likewise
+            LSBFIRST => 0,
+            SPE      => 0,
+            BR       => BR_Setting,
+            MSTR     => 1,
+            CPOL     => 0, -- mode 0
+            CPHA     => 0,
+            others   => <>);
       end;
 
-      --  Deconfigure I2S
-      STM32_SVD.SPI.SPI1_Periph.I2SCFGR.I2SMOD := 0;
+      STM32_SVD.SPI.SPI1_Periph.CR2 :=
+        (TXEIE   => 0,
+         RXNEIE  => 0,
+         ERRIE   => 0,
+         FRF     => 0,
+         SSOE    => 0,
+         TXDMAEN => 0,
+         RXDMAEN => 0,
+         others  => <>);
+
+         --  Deconfigure I2S
+      STM32_SVD.SPI.SPI1_Periph.I2SCFGR := (I2SMOD => 0,
+                                        others => <>);
 
       --  Enable SPI
       STM32_SVD.SPI.SPI1_Periph.CR1.SPE := 1;

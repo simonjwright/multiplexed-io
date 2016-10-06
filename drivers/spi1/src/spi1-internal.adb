@@ -3,6 +3,7 @@
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
 with SPI1.Device;
+with Nanosleep;
 
 with STM32_SVD.GPIO;
 with STM32_SVD.RCC;
@@ -22,6 +23,8 @@ is
 
    use STM32_SVD;
 
+   Hold_Off : constant Duration := 0.000_100;
+
    procedure Select_Device (The_Device : Device) with Inline;
    procedure Deselect_Device (The_Device : Device) with Inline;
 
@@ -30,6 +33,7 @@ is
    is
    begin
       Select_Device (The_Device);
+      Nanosleep.Sleep (Hold_Off);
       SPI1.Device.Read_SPI (Bytes);
       Deselect_Device (The_Device);
    end Read_SPI;
@@ -39,6 +43,7 @@ is
    is
    begin
       Select_Device (The_Device);
+      Nanosleep.Sleep (Hold_Off);
       SPI1.Device.Write_SPI (Bytes);
       Deselect_Device (The_Device);
    end Write_SPI;
@@ -50,6 +55,7 @@ is
    is
    begin
       Select_Device (The_Device);
+      Nanosleep.Sleep (Hold_Off);
       SPI1.Device.Command_SPI (Command, Result);
       Deselect_Device (The_Device);
    end Command_SPI;

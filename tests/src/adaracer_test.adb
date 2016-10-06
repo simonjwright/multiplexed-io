@@ -39,7 +39,7 @@ begin
          case C is
 
             when 'b' | 'B' =>
-               Put_Line ("BARO demo: reporting pressure in mB * 100");
+               Put_Line ("BARO demo: reporting pressure in mB*100");
                for J in 1 .. 10 loop
                   case SPI2.BARO.Status is
                      when SPI2.BARO.OK =>
@@ -72,15 +72,43 @@ begin
                end;
 
             when 'm' | 'M' =>
-               Put_Line ("MPU9250 demo: incomplete");
+               if SPI1.MPU9250.MPU9250_Device_Identified then
+                  Put ("MPU9250 identified, ");
+               else
+                  Put ("MPU9250 not identified, ");
+               end if;
+               if SPI1.MPU9250.MPU9250_Ok then
+                  Put ("OK, ");
+               else
+                  Put ("not OK, ");
+               end if;
+               if SPI1.MPU9250.AK8963_Device_Identified then
+                  Put ("AK8963 identified, ");
+               else
+                  Put ("AK8963 not identified, ");
+               end if;
+               if SPI1.MPU9250.AK8963_Ok then
+                  Put ("OK, ");
+               else
+                  Put ("not OK");
+               end if;
+               New_Line;
+               Put_Line
+                 ("a in g*1000, g in deg/sec*100, m in milligauss (nT/100)");
                for J in 1 .. 10 loop
-                  Put ("MPU9250 identified: ");
-                  Put (Boolean'Image (SPI1.MPU9250.MPU9250_Device_Identified));
-                  Put (", AK8963 identified: ");
-                  Put (Boolean'Image (SPI1.MPU9250.AK8963_Device_Identified));
+                  Put ("a:");
+                  for A of SPI1.MPU9250.Accelerations loop
+                     Put (" " & Integer'Image (Integer (A * 1000.0)));
+                  end loop;
+                  Put (" g:");
+                  for G of SPI1.MPU9250.Gyro_Rates loop
+                     Put (" " & Integer'Image (Integer (G * 100.0)));
+                  end loop;
+                  Put (" m:");
+                  for M of SPI1.MPU9250.Magnetic_Fields loop
+                     Put (" " & Integer'Image (Integer (M)));
+                  end loop;
                   New_Line;
-                  SPI1.MPU9250.MPU9250_Device_Identified := False;
-                  SPI1.MPU9250.AK8963_Device_Identified := False;
                   delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
                end loop;
 

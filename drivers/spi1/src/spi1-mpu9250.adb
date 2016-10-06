@@ -12,23 +12,26 @@ pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
 with Nanosleep;
-with Ada.Text_IO; use Ada.Text_IO;
+--  with Ada.Text_IO; use Ada.Text_IO;
 
 package body SPI1.MPU9250
 with
-  SPARK_Mode => On
+  SPARK_Mode => Off
 is
+
+   --  Suppress debug output.
+   procedure Put (S : String) is null;
+   procedure Put_Line (S : String) is null;
+   procedure New_Line is null;
 
    task MPU9250_Reader
    with Priority => System.Default_Priority - 1;
    --  This is temporary; it means that if we hang (at least, in a
    --  delay) the remainder of the test application can still run.
 
-   type Coordinate is (X, Y, Z);
-
-   type MPU9250_Components is array (Coordinate) of Float;
-   type AK8963_Calibrations is array (Coordinate) of Float;
-   type AK8963_Components is array (Coordinate) of Float;
+   type MPU9250_Components is new Coordinates;
+   type AK8963_Calibrations is new Coordinates;
+   type AK8963_Components is new Coordinates;
 
    procedure Self_Test_9250 (Ok : out Boolean);
    --  Leaves device configured for self test.
@@ -45,7 +48,8 @@ is
       Components : out MPU9250_Components);
 
    procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
-                                     Components : out AK8963_Components);
+                                     Components : out AK8963_Components;
+                                     Scaled : Boolean := True);
 
    function Read_9250 (From_Register : MPU9250_Registers.MPU9250_Register)
                       return Interfaces.Unsigned_8;
@@ -72,11 +76,6 @@ is
 
    task body MPU9250_Reader is
       Magnetometer_Calibrations : AK8963_Calibrations;
-      Last_Accel : MPU9250_Components := (others => 0.0);
-      Last_Gyro : MPU9250_Components := (others => 0.0);
-      Last_Mag : AK8963_Components := (others => 0.0);
-      MPU9250_Ok : Boolean := False;
-      AK8963_Ok : Boolean := False;
       use type Interfaces.Unsigned_8;
       use MPU9250_Registers;
    begin
@@ -86,6 +85,7 @@ is
       declare
          ID : constant Interfaces.Unsigned_8 := Read_9250 (WHOAMI);
       begin
+         MPU9250_Device_Identified := ID = 16#71# or ID = 16#73#;
          if ID = 16#71# then
             Put_Line ("MPU9250 recognised");
          elsif ID = 16#73# then
@@ -146,14 +146,23 @@ is
       --  Set I2C clock. K_348 is the "default" (i.e. the one with
       --  Enum_Rep = 0).
       Write_9250 (I2C_MST_CTRL,
-                  Convert (I2C_Master_Control'(I2C_MST_CLK => K_348,
+                  Convert (I2C_Master_Control'(I2C_MST_P_NSR => 1,
+                                               I2C_MST_CLK => K_348,
                                                others => <>)));
+
       --  wait a bit
       Delay_For (100);
 
-      --  pragma Assert (Read_AK8963 (WIA) = 16#48#,
-      --                   "wrong ID for AK8963");
-      Put_Line ("AK8963 ID should be 72, is " & Read_AK8963 (WIA)'Img);
+      declare
+         ID : constant Byte := Read_AK8963 (WIA);
+      begin
+         AK8963_Device_Identified := ID = 16#48#;
+         Put_Line (if AK8963_Device_Identified
+                   then "AK8963 recognised"
+                   else "AK8963 ID should be 72, is " & ID'Img);
+      end;
+      --  wait a bit
+      Delay_For (100);
 
       --  Put the AK8963 into power-down
       Write_AK8963 (CNTL1,
@@ -180,12 +189,39 @@ is
       Delay_For (100);
 
       loop
-         MPU9250_Device_Identified := Read_9250 (WHOAMI) = 16#71#;
-
          declare
             ATG : Byte_Array (ACCEL_XOUT_H .. GYRO_ZOUT_L);
+            Acceleration_Scale : constant Float := 8.0 / 32768.0;
+            Gyro_Scale : constant Float := 2000.0 / 32768.0;
          begin
             Read_9250 (ACCEL_XOUT_H, ATG);
+
+            Accelerations (X) :=
+              Float (To_Integer (Lo => ATG (ACCEL_XOUT_L),
+                                 Hi => ATG (ACCEL_XOUT_H)))
+              * Acceleration_Scale;
+            Accelerations (Y) :=
+              Float (To_Integer (Lo => ATG (ACCEL_YOUT_L),
+                                 Hi => ATG (ACCEL_YOUT_H)))
+              * Acceleration_Scale;
+            Accelerations (Z) :=
+              Float (To_Integer (Lo => ATG (ACCEL_ZOUT_L),
+                                 Hi => ATG (ACCEL_ZOUT_H)))
+              * Acceleration_Scale;
+
+            Gyro_Rates (X) :=
+              Float (To_Integer (Lo => ATG (GYRO_XOUT_L),
+                                 Hi => ATG (GYRO_XOUT_H)))
+              * Gyro_Scale;
+            Gyro_Rates (Y) :=
+              Float (To_Integer (Lo => ATG (GYRO_YOUT_L),
+                                 Hi => ATG (GYRO_YOUT_H)))
+              * Gyro_Scale;
+            Gyro_Rates (Z) :=
+              Float (To_Integer (Lo => ATG (GYRO_ZOUT_L),
+                                 Hi => ATG (GYRO_ZOUT_H)))
+              * Gyro_Scale;
+
             Put ("ax: "
                    & To_Integer (Lo => ATG (ACCEL_XOUT_L),
                                  Hi => ATG (ACCEL_XOUT_H))'Img);
@@ -210,24 +246,15 @@ is
             New_Line;
          end;
 
-            --  Read measurements from the AK8963
-            declare
-               Milligauss : AK8963_Components;
-            begin
-               Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
-               if Milligauss = Last_Mag then
-                  Put_Line ("magnetometer unchanged");
-               else
-                  Last_Mag := Milligauss;
-                  Put ("mag: ");
-                  for M of Milligauss loop
-                     Put (Integer (M)'Img & " ");
-                  end loop;
-                  New_Line;
-               end if;
-            end;
+         --  Read measurements from the AK8963
+         declare
+            Milligauss : AK8963_Components;
+         begin
+            Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
+            Magnetic_Fields := Coordinates (Milligauss);
+         end;
 
-         Delay_For (1000);
+         Delay_For (10);
       end loop;
    end MPU9250_Reader;
 
@@ -473,8 +500,6 @@ is
    procedure Calibrate_AK8963 (Calibrations : out AK8963_Calibrations)
    is
       Raw : Byte_Array (0 .. 2) := (others => 0);
-      Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
-      --  for 16-bit resolution
       use MPU9250_Registers;
    begin
       Write_AK8963 (CNTL1,
@@ -482,21 +507,34 @@ is
                                         others => <>)));
       Delay_For (100);
       Write_AK8963 (CNTL1,
-                    Convert (Control_1'(MODE => Fuse_ROM_Access,
+                    Convert (Control_1'(BITS => 1,
+                                        MODE => Fuse_ROM_Access,
                                         others => <>)));
-      Read_AK8963 (ASAX, Raw);
+      Delay_For (100);
+
+      Put ("waiting for calibration data ready ");
+      declare
+         use type Interfaces.Unsigned_8;
+      begin
+         loop
+            Read_AK8963 (ASAX, Raw);
+            exit when Raw (0) /= 0 and Raw (1) /= 0 and Raw (2) /= 0;
+            Put (".");
+         end loop;
+      end;
+      New_Line;
       Put ("mrawcal:");
       for R in Raw'Range loop
          Put (Raw (R)'Img & " ");
       end loop;
       New_Line;
+      Put ("cal*100:");
       for C in Coordinate'Range loop
          Calibrations (C) :=
            (Float (Raw (Coordinate'Pos (C))) - 128.0) / 256.0 + 1.0;
+         Put (Integer (Calibrations (C) * 100.0)'Img);
       end loop;
-      for C of Calibrations loop
-         C := C * Magnetometer_Scaling;
-      end loop;
+      New_Line;
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
@@ -516,6 +554,7 @@ is
       Write_AK8963 (ASTC,
                     Convert (Self_Test_Control'(SELF => 1,
                                                 others => <>)));
+      Delay_For (10);
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Self_Test,
                                         others => <>)));
@@ -527,7 +566,7 @@ is
       end loop;
       New_Line;
 
-      Read_AK8963_Components (Calibrations, Components);
+      Read_AK8963_Components (Calibrations, Components, Scaled => False);
 
       Ok := Components (X) in -200.0 .. 200.0
         and Components (Y) in -200.0 .. 200.0
@@ -548,7 +587,7 @@ is
 
    procedure Read_MPU9250_Components
      (From_Register : MPU9250_Registers.MPU9250_Register;
-      Components : out MPU9250_Components)
+     Components : out MPU9250_Components)
    is
       Raw : Byte_Array (1 .. 6);
    begin
@@ -559,16 +598,25 @@ is
    end Read_MPU9250_Components;
 
    procedure Read_AK8963_Components (Calibrations : AK8963_Calibrations;
-                                     Components : out AK8963_Components)
+                                     Components : out AK8963_Components;
+                                     Scaled : Boolean := True)
    is
       use MPU9250_Registers;
       --  Measurements from the AK8963; we must read ST2 to ready for
       --  next cycle.
       XYZ : Byte_Array (HXL .. ST2) := (others => 0);
       Raw : array (Coordinate) of Integer;
+      Magnetometer_Scaling : constant Float := 10.0 * 4912.0 / 32760.0;
+      --  for 16-bit resolution, lsb = 0.15 uT, value is abs 32760.0; this
+      --  formula generates milligauss (mG).
    begin
       Read_AK8963 (HXL, XYZ);
       if Status_2'(Convert (XYZ (ST2))).HOFL = 0 then
+         Put ("raw st:");
+         for J in XYZ'Range loop
+            Put (XYZ (J)'Img);
+         end loop;
+         New_Line;
          Raw (X) := To_Integer (Lo => XYZ (HXL),
                                 Hi => XYZ (HXH));
          Raw (Y) := To_Integer (Lo => XYZ (HYL),
@@ -576,7 +624,10 @@ is
          Raw (Z) := To_Integer (Lo => XYZ (HZL),
                                 Hi => XYZ (HZH));
          for Axis in Coordinate'Range loop
-            Components (Axis) := Float (Raw (Axis)) * Calibrations (Axis);
+            Components (Axis) :=
+              Float (Raw (Axis))
+              * Calibrations (Axis)
+              * (if Scaled then Magnetometer_Scaling else 1.0);
          end loop;
       else
          Put_Line ("AK8963 overflow");
@@ -621,7 +672,7 @@ is
    --  there is always one control byte sent first.
    I2C_Time_Per_Byte : constant Duration := 0.000_025;
    --  We seem to need a bit more.
-   I2C_Additional_Delay : constant Duration := 0.000_500;
+   I2C_Additional_Delay : constant Duration := 0.000_400;
 
    --  Disable the internal I2C after the transfer is (should have
    --  been) complete.
