@@ -20,6 +20,7 @@ is
    type Bits_2 is range 0 .. 2**2 - 1 with Size => 2;
    type Bits_3 is range 0 .. 2**3 - 1 with Size => 3;
    type Bits_4 is range 0 .. 2**4 - 1 with Size => 4;
+   type Bits_5 is range 0 .. 2**5 - 1 with Size => 5;
    type Bits_6 is range 0 .. 2**6 - 1 with Size => 6;
    type Bits_7 is range 0 .. 2**7 - 1 with Size => 7;
 
@@ -59,7 +60,7 @@ is
       Hz_10,
       Hz_5,
       Hz_3600) with Size => 3;
-   --  Only meaningful when Gyro_Configuration.F_Choice_B is 3
+   --  Only meaningful when Gyro_Configuration.F_Choice_B is 0
    type Configuration is record
       Reserved_7_7 : Bit := 0;
       FIFO_MODE : Bit := 0;
@@ -386,7 +387,28 @@ is
    subtype I2C_Data_Out is Interfaces.Unsigned_8;
    I2C_SLV0_DO : constant := 99;
 
-   --  XXX GAP
+   type I2C_Master_Delay_Control is record
+      DELAY_ES_SHADOW : Bit := 0;
+      Reserved_5_6 : Bits_2 := 0;
+      I2C_SLV4_DLY_EN : Bit := 0;
+      I2C_SLV3_DLY_EN : Bit := 0;
+      I2C_SLV2_DLY_EN : Bit := 0;
+      I2C_SLV1_DLY_EN : Bit := 0;
+      I2C_SLV0_DLY_EN : Bit := 0;
+   end record with Size => 8;
+   for I2C_Master_Delay_Control use record
+      DELAY_ES_SHADOW at 0 range 7 .. 7;
+      Reserved_5_6 at 0 range 5 .. 6;
+      I2C_SLV4_DLY_EN at 0 range 4 .. 4;
+      I2C_SLV3_DLY_EN at 0 range 3 .. 3;
+      I2C_SLV2_DLY_EN at 0 range 2 .. 2;
+      I2C_SLV1_DLY_EN at 0 range 1 .. 1;
+      I2C_SLV0_DLY_EN at 0 range 0 .. 0;
+   end record;
+   function Convert is new Ada.Unchecked_Conversion (I2C_Master_Delay_Control,
+                                                     Interfaces.Unsigned_8);
+   I2C_MST_DELAY_CTRL : constant := 103;
+
 
    type User_Control is record
       Reserved_7_7 : Bit := 0;
@@ -453,6 +475,24 @@ is
    function Convert is new Ada.Unchecked_Conversion (Power_Management_2,
                                                      Interfaces.Unsigned_8);
    PWR_MGMT_2 : constant := 108;
+
+   type FIFO_Count_High is record
+      Reserved_5_7 : Bits_3 := 0;
+      FIFO_CNT : Bits_5 := 0;
+   end record with Size => 8;
+   for FIFO_Count_High use record
+      Reserved_5_7 at 0 range 5 .. 7;
+      FIFO_CNT at 0 range 0 .. 4;
+   end record;
+   function Convert is new Ada.Unchecked_Conversion (Interfaces.Unsigned_8,
+                                                     FIFO_Count_High);
+   FIFO_CNT_H : constant := 114;
+
+   subtype FIFO_Count_Low is Interfaces.Unsigned_8;
+   FIFO_CNT_L : constant := 115;
+
+   subtype FIFO_Read_Write is Interfaces.Unsigned_8;
+   FIFO_R_W : constant := 116;
 
    subtype Device_Identity is Interfaces.Unsigned_8;
    WHOAMI : constant := 117;
