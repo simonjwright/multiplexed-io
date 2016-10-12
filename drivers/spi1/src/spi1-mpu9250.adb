@@ -11,7 +11,7 @@ with SPI1.Internal;
 pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
-with Nanosleep;
+with SPI1.MPU9250_Sleep;
 --  with Ada.Text_IO; use Ada.Text_IO;
 
 package body SPI1.MPU9250
@@ -703,7 +703,7 @@ is
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
                                               I2C_SLV_LENG => Bytes'Length,
                                               others => <>)));
-      Nanosleep.Sleep
+      MPU9250_Sleep.Sleep
         (I2C_Time_Per_Byte * (Bytes'Length + 1) + I2C_Additional_Delay);
       Write_9250 (I2C_SLV0_CTRL,
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
@@ -729,7 +729,7 @@ is
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 1,
                                               I2C_SLV_LENG => 1,
                                               others => <>)));
-      Nanosleep.Sleep (I2C_Time_Per_Byte * 2 + I2C_Additional_Delay);
+      MPU9250_Sleep.Sleep (I2C_Time_Per_Byte * 2 + I2C_Additional_Delay);
       Write_9250 (I2C_SLV0_CTRL,
                   Convert (I2C_Slave_Control'(I2C_SLV_EN => 0,
                                               others => <>)));

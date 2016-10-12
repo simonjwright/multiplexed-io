@@ -14,4 +14,8 @@ project SPI1_Gnatprove is
       for Global_Configuration_Pragmas use "../../gnat.adc";
    end Builder;
 
+   package Naming is
+      for Body ("SPI1.MPU9250_Sleep") use "spi1-mpu9250_sleep.proving.adb";
+   end Naming;
+
 end SPI1_Gnatprove;
