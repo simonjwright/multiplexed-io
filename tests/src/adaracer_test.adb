@@ -88,7 +88,7 @@ begin
                   Put ("AK8963 not identified, ");
                end if;
                if SPI1.MPU9250.AK8963_Ok then
-                  Put ("OK, ");
+                  Put ("OK");
                else
                   Put ("not OK");
                end if;

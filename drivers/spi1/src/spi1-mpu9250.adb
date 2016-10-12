@@ -153,16 +153,19 @@ is
       --  wait a bit
       Delay_For (100);
 
-      declare
-         ID : constant Byte := Read_AK8963 (WIA);
-      begin
-         AK8963_Device_Identified := ID = 16#48#;
-         Put_Line (if AK8963_Device_Identified
-                   then "AK8963 recognised"
-                   else "AK8963 ID should be 72, is " & ID'Img);
-      end;
-      --  wait a bit
-      Delay_For (100);
+      for J in 1 .. 5 loop
+         declare
+            ID : constant Byte := Read_AK8963 (WIA);
+         begin
+            AK8963_Device_Identified := ID = 16#48#;
+            Put_Line (if AK8963_Device_Identified
+                      then "AK8963 recognised"
+                      else "AK8963 ID should be 72, is " & ID'Img);
+            exit when ID /= 0;  -- i.e. we have read _something_
+         end;
+         --  wait a bit
+         Delay_For (250);
+      end loop;
 
       --  Put the AK8963 into power-down
       Write_AK8963 (CNTL1,
@@ -547,42 +550,55 @@ is
       Components : AK8963_Components := (others => 0.0);
       use MPU9250_Registers;
    begin
-      Write_AK8963 (CNTL1,
-                    Convert (Control_1'(MODE => Power_Down,
-                                        others => <>)));
-      Delay_For (10);
-      Write_AK8963 (ASTC,
-                    Convert (Self_Test_Control'(SELF => 1,
-                                                others => <>)));
-      Delay_For (10);
-      Write_AK8963 (CNTL1,
-                    Convert (Control_1'(MODE => Self_Test,
-                                        others => <>)));
+      --  The Samsung code at https://searchcode.com/codesearch/view/26290784/
+      --  has 5 tries.
+      for J in 1 .. 5 loop
+         Write_AK8963 (CNTL1,
+                       Convert (Control_1'(MODE => Power_Down,
+                                           others => <>)));
+         Delay_For (100);
+         Write_AK8963 (ASTC,
+                       Convert (Self_Test_Control'(SELF => 1,
+                                                   others => <>)));
+         Write_AK8963 (CNTL1,
+                       Convert (Control_1'(BITS => 1,
+                                           MODE => Self_Test,
+                                           others => <>)));
+         Delay_For (100);
 
-      Put ("waiting for mag self-test ready ");
-      while Status_1'(Convert (Read_AK8963 (ST1))).DRDY = 0 loop
-         Put (".");
-         Delay_For (2);
+         Put ("waiting for mag self-test ready ");
+         while Status_1'(Convert (Read_AK8963 (ST1))).DRDY = 0 loop
+            Put (".");
+            Delay_For (2);
+         end loop;
+         New_Line;
+
+         Read_AK8963_Components (Calibrations, Components, Scaled => False);
+
+         Put ("stmx: " & Integer (Components (X))'Img);
+         Put (" stmy: " & Integer (Components (Y))'Img);
+         Put (" stmz: " & Integer (Components (Z))'Img);
+
+         Ok := Components (X) in -200.0 .. 200.0
+           and Components (Y) in -200.0 .. 200.0
+           and Components (Z) in -3200.0 .. -800.0;
+
+         if Ok then
+            Put_Line (" ok after" & J'Img & " tries");
+            exit;
+         else
+            Put_Line (" failed");
+         end if;
+
+         Write_AK8963 (ASTC,
+                       Convert (Self_Test_Control'(SELF => 0,
+                                                   others => <>)));
       end loop;
-      New_Line;
 
-      Read_AK8963_Components (Calibrations, Components, Scaled => False);
-
-      Ok := Components (X) in -200.0 .. 200.0
-        and Components (Y) in -200.0 .. 200.0
-        and Components (Z) in -3200.0 .. -800.0;
-
-      Put ("stmx: " & Integer (Components (X))'Img);
-      Put (" stmy: " & Integer (Components (Y))'Img);
-      Put (" stmz: " & Integer (Components (Z))'Img);
-      New_Line;
-      Write_AK8963 (ASTC,
-                    Convert (Self_Test_Control'(SELF => 0,
-                                                others => <>)));
       Write_AK8963 (CNTL1,
                     Convert (Control_1'(MODE => Power_Down,
                                         others => <>)));
-      Delay_For (10);
+      Delay_For (100);
    end Self_Test_AK8963;
 
    procedure Read_MPU9250_Components
