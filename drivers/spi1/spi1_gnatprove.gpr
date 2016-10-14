@@ -15,7 +15,7 @@ project SPI1_Gnatprove is
    end Builder;
 
    package Naming is
-      for Body ("SPI1.MPU9250_Sleep") use "spi1-mpu9250_sleep.proving.adb";
+      for Body ("SPI1.Timer_Sleep") use "spi1-timer_sleep.proving.adb";
    end Naming;
 
 end SPI1_Gnatprove;

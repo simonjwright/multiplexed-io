@@ -8,7 +8,7 @@ with System;
 with STM32_SVD.RCC;
 with STM32_SVD.TIM;
 
-package body SPI1.MPU9250_Sleep
+package body SPI1.Timer_Sleep
 is
 
    protected Timer_Handler
@@ -68,7 +68,7 @@ begin
    TIM.TIM14_Periph.CR1 := (URS => 1, others => <>);
    --  Enable Update interrupt
    TIM.TIM14_Periph.DIER := (UIE => 1, others => <>);
-   --  The Prescaler should be 83.3333 for 1 us/count
+   --  The divisor is 84 for 1 us/count, so PSC is 1 less
    TIM.TIM14_Periph.PSC := (PSC => 83, others => <>);
 
-end SPI1.MPU9250_Sleep;
+end SPI1.Timer_Sleep;
