@@ -2,6 +2,10 @@
 --  (http://adapilot.likeabird.eu).
 --  Copyright (C) 2016 Simon Wright <simon@pushface.org>
 
+with Monitor;
+with LEDs;
+pragma Unreferenced (LEDs);
+
 with SPI1.MPU9250;
 with SPI2.BARO;
 with SPI2.FRAM;
@@ -96,19 +100,34 @@ begin
                Put_Line
                  ("a in g*1000, g in deg/sec*100, m in milligauss (nT/100)");
                for J in 1 .. 10 loop
-                  Put ("a:");
-                  for A of SPI1.MPU9250.Accelerations loop
-                     Put (" " & Integer'Image (Integer (A * 1000.0)));
-                  end loop;
-                  Put (" g:");
-                  for G of SPI1.MPU9250.Gyro_Rates loop
-                     Put (" " & Integer'Image (Integer (G * 100.0)));
-                  end loop;
-                  Put (" m:");
-                  for M of SPI1.MPU9250.Magnetic_Fields loop
-                     Put (" " & Integer'Image (Integer (M)));
-                  end loop;
-                  New_Line;
+                  declare
+                     Output : Boolean := False;
+                  begin
+                     if Monitor.Usable (Monitor.Accelerometer) then
+                        Output := True;
+                        Put (" a:");
+                        for A of SPI1.MPU9250.Accelerations loop
+                           Put (" " & Integer'Image (Integer (A * 1000.0)));
+                        end loop;
+                     end if;
+                     if Monitor.Usable (Monitor.Gyro) then
+                        Output := True;
+                        Put (" g:");
+                        for G of SPI1.MPU9250.Gyro_Rates loop
+                           Put (" " & Integer'Image (Integer (G * 100.0)));
+                        end loop;
+                     end if;
+                     if Monitor.Usable (Monitor.Magnetometer) then
+                        Output := True;
+                        Put (" m:");
+                        for M of SPI1.MPU9250.Magnetic_Fields loop
+                           Put (" " & Integer'Image (Integer (M)));
+                        end loop;
+                     end if;
+                     if Output then
+                        New_Line;
+                     end if;
+                  end;
                   delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
                end loop;
 

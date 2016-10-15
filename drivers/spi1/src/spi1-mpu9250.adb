@@ -7,11 +7,15 @@ with Ada.Unchecked_Conversion;
 with Interfaces;
 with System;
 
+with Monitor;
+
 with SPI1.Internal;
 pragma Elaborate_All (SPI1.Internal);
 with SPI1.MPU9250_Registers;
 
 with SPI1.Timer_Sleep;
+
+pragma Warnings (Off, "unit ""Ada.Text_IO"" is not referenced");
 with Ada.Text_IO;
 
 package body SPI1.MPU9250
@@ -101,6 +105,8 @@ is
       end;
 
       if not MPU9250_Device_Identified then
+         Monitor.Set_Status (Monitor.Accelerometer, Monitor.Failed);
+         Monitor.Set_Status (Monitor.Gyro, Monitor.Failed);
          loop
             Delay_For (1000);
          end loop;
@@ -177,29 +183,48 @@ is
          Delay_For (250);
       end loop;
 
-      --  Put the AK8963 into power-down
-      Write_AK8963 (CNTL1,
-                    Convert (Control_1'(MODE => Power_Down,
-                                        others => <>)));
-      --  wait a bit
-      Delay_For (100);
+      if not AK8963_Device_Identified then
+         Monitor.Set_Status (Monitor.Magnetometer, Monitor.Failed);
+      else
+         --  Put the AK8963 into power-down
+         Write_AK8963 (CNTL1,
+                       Convert (Control_1'(MODE => Power_Down,
+                                           others => <>)));
+         --  wait a bit
+         Delay_For (100);
 
-      --  Reset ..
-      Write_AK8963 (CNTL2,
-                    Convert (Control_2'(SRST => 1, others => <>)));
-      --  wait a bit
-      Delay_For (200);
+         --  Reset ..
+         Write_AK8963 (CNTL2,
+                       Convert (Control_2'(SRST => 1, others => <>)));
+         --  wait a bit
+         Delay_For (200);
 
-      Calibrate_AK8963 (Magnetometer_Calibrations);
-      Self_Test_AK8963 (Magnetometer_Calibrations, AK8963_Ok);
+         Calibrate_AK8963 (Magnetometer_Calibrations);
+         Self_Test_AK8963 (Magnetometer_Calibrations, AK8963_Ok);
 
-      --  Kick off magnetometer measurements (100 Hz)
-      Write_AK8963 (CNTL1,
-                    Convert (Control_1'(BITS => 1,
-                                        MODE => Continuous_Measurement_2,
-                                        others => <>)));
-      --  wait a bit
-      Delay_For (100);
+         Monitor.Set_Status (Monitor.Magnetometer,
+                             (if AK8963_Ok
+                              then Monitor.Ok
+                              else Monitor.Failed));
+
+         --  Kick off magnetometer measurements (100 Hz)
+         Write_AK8963 (CNTL1,
+                       Convert (Control_1'(BITS => 1,
+                                           MODE => Continuous_Measurement_2,
+                                           others => <>)));
+         --  wait a bit
+         Delay_For (100);
+      end if;
+
+      --  Wait until now to report accel, gyro status (or we'd be
+      --  reporting zero values).
+      if MPU9250_Ok then
+         Monitor.Set_Status (Monitor.Accelerometer, Monitor.Ok);
+         Monitor.Set_Status (Monitor.Gyro, Monitor.Ok);
+      else
+         Monitor.Set_Status (Monitor.Accelerometer, Monitor.Failed);
+         Monitor.Set_Status (Monitor.Gyro, Monitor.Failed);
+      end if;
 
       loop
          declare
@@ -259,15 +284,17 @@ is
             New_Line;
          end;
 
-         --  Read measurements from the AK8963
-         declare
-            Milligauss : AK8963_Components;
-         begin
-            Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
-            Magnetic_Fields := Coordinates (Milligauss);
-         end;
+         if AK8963_Ok then
+            --  Read measurements from the AK8963
+            declare
+               Milligauss : AK8963_Components;
+            begin
+               Read_AK8963_Components (Magnetometer_Calibrations, Milligauss);
+               Magnetic_Fields := Coordinates (Milligauss);
+            end;
+         end if;
 
-         Delay_For (500);
+         Delay_For (10);
       end loop;
    end MPU9250_Reader;
 

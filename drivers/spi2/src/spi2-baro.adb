@@ -8,6 +8,8 @@ pragma Elaborate_All (SPI2.Internal);
 with Ada.Real_Time;
 with Interfaces;
 
+with Monitor;
+
 package body SPI2.BARO
 with
   SPARK_Mode => On
@@ -143,6 +145,7 @@ is
               """Raw_Coefficients"" might not be initialized",
               "all are covered in loop");
          Initialization_Status := Invalid_CRC;
+         Monitor.Set_Status (Monitor.Barometer, Monitor.Failed);
          return;
       end if;
 
@@ -153,6 +156,7 @@ is
       end loop;
 
       Initialization_Status := OK;
+      Monitor.Set_Status (Monitor.Barometer, Monitor.Ok);
    end Initialize;
 
    task body BARO_Reader is
