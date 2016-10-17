@@ -57,8 +57,8 @@ package body LEDs is
                if Get_Status (D) = Failed then
                   Output_Letter (Red, Letter_For_Device (D));
                end if;
-               --  Add the word separator (one dot already output)
-               delay until Ada.Real_Time.Clock + Dot_Period * 6;
+               --  Add the word separator (3 dots already output)
+               delay until Ada.Real_Time.Clock + Dot_Period * 4;
             end loop;
          end if;
          delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
@@ -85,9 +85,9 @@ package body LEDs is
    begin
       return (case D is
                  when Monitor.Accelerometer => (Dot, Dash),
-                 when Monitor.Barometer => (Dash, Dot, Dot, Dot),
-                 when Monitor.Gyro => (Dash, Dash, Dot),
-                 when Monitor.Magnetometer => (Dash, Dash));
+                 when Monitor.Barometer     => (Dash, Dot, Dot, Dot),
+                 when Monitor.Gyro          => (Dash, Dash, Dot),
+                 when Monitor.Magnetometer  => (Dash, Dash));
    end Letter_For_Device;
 
    procedure Output_Letter (Using : LED; Letter : Morse_Letter)
@@ -98,13 +98,15 @@ package body LEDs is
       for Code of Letter loop
          On (Using);
          Next := Next + (case Code is
-                            when Dot => Dot_Period,
+                            when Dot  => Dot_Period,
                             when Dash => Dot_Period * 3);
          delay until Next;
          Off (Using);
          Next := Next + Dot_Period;
          delay until Next;
       end loop;
+      --  The inter-letter separation is 3 dots, and we've already
+      --  output one.
       Next := Next + Dot_Period * 2;
       delay until Next;
    end Output_Letter;
