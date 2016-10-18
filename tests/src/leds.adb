@@ -56,10 +56,15 @@ package body LEDs is
             for D of Monitored loop
                if Get_Status (D) = Failed then
                   Output_Letter (Red, Letter_For_Device (D));
+                  --  Add the word separator (3 dots already output)
+                  delay until Ada.Real_Time.Clock + Dot_Period * 4;
                end if;
-               --  Add the word separator (3 dots already output)
-               delay until Ada.Real_Time.Clock + Dot_Period * 4;
             end loop;
+         elsif (for some D of Monitored => Get_Status (D) = Ok) then
+            --  Just a flash of green
+            On (Green);
+            delay until Ada.Real_Time.Clock + Dot_Period * 4;
+            Off (Green);
          end if;
          delay until Ada.Real_Time.Clock + Ada.Real_Time.Seconds (1);
       end loop;
